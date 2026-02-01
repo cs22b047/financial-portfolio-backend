@@ -9,6 +9,14 @@ import java.util.List;
 @Entity
 @Table(name = "assets", 
        uniqueConstraints = @UniqueConstraint(columnNames = {"asset_type_id", "symbol", "status"}))
+public class Asset {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "asset_type_id", nullable = false)
     private AssetType assetType;
     
     @ManyToOne(fetch = FetchType.LAZY)
