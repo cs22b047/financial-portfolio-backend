@@ -146,6 +146,7 @@ public class MarketData {
     private LocalDateTime updatedDate;
     
     @OneToMany(mappedBy = "marketData", fetch = FetchType.LAZY)
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private List<Asset> assets;
     
     // Constructors

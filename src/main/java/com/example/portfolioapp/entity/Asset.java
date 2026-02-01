@@ -127,9 +127,11 @@ public class Asset {
     private LocalDateTime updatedDate;
     
     @OneToMany(mappedBy = "asset", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private List<Transaction> transactions;
     
     @OneToMany(mappedBy = "asset", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private List<Dividend> dividends;
     
     // Constructors

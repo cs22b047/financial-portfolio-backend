@@ -35,6 +35,7 @@ public class AssetType {
     private LocalDateTime updatedDate;
     
     @OneToMany(mappedBy = "assetType", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private List<Asset> assets;
     
     // Constructors
