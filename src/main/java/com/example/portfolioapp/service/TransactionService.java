@@ -6,41 +6,60 @@ import com.example.portfolioapp.repository.TransactionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 
+/**
+ * Service for Transaction operations
+ */
 @Service
 public class TransactionService {
-    
+
     @Autowired
     private TransactionRepository transactionRepository;
-    
-    public List<Transaction> getAllTransactions() {
-        return transactionRepository.findAll();
+
+    /**
+     * Get transactions by symbol
+     */
+    public List<Transaction> getTransactionsBySymbol(String symbol) {
+        return transactionRepository.findByAsset_MarketData_SymbolOrderByTransactionDateDesc(symbol);
     }
-    
-    public Optional<Transaction> getTransactionById(Long id) {
-        return transactionRepository.findById(id);
+
+    /**
+     * Get transactions by type
+     */
+    public List<Transaction> getTransactionsByType(TransactionType type) {
+        return transactionRepository.findByTransactionTypeOrderByTransactionDateDesc(type);
     }
-    
-    public List<Transaction> getTransactionsByAsset(Long assetId) {
-        return transactionRepository.findByAssetIdOrderByDateDesc(assetId);
-    }
-    
-    public List<Transaction> getTransactionsByType(TransactionType transactionType) {
-        return transactionRepository.findByTransactionType(transactionType);
-    }
-    
+
+    /**
+     * Get transactions by date range
+     */
     public List<Transaction> getTransactionsByDateRange(LocalDate startDate, LocalDate endDate) {
-        return transactionRepository.findByTransactionDateBetween(startDate, endDate);
+        return transactionRepository.findByTransactionDateBetweenOrderByTransactionDateDesc(startDate, endDate);
     }
-    
-    public Transaction saveTransaction(Transaction transaction) {
-        return transactionRepository.save(transaction);
+
+    /**
+     * Get all transactions
+     */
+    public List<Transaction> getAllTransactions() {
+        return transactionRepository.findAllByOrderByTransactionDateDesc();
     }
-    
-    public void deleteTransaction(Long id) {
-        transactionRepository.deleteById(id);
+
+    /**
+     * Calculate total invested (sum of BUY transactions)
+     */
+    public BigDecimal calculateTotalInvested() {
+        BigDecimal total = transactionRepository.calculateTotalInvested();
+        return total != null ? total : BigDecimal.ZERO;
+    }
+
+    /**
+     * Calculate realized gains (from SELL transactions)
+     */
+    public BigDecimal calculateRealizedGains() {
+        BigDecimal total = transactionRepository.calculateRealizedGains();
+        return total != null ? total : BigDecimal.ZERO;
     }
 }
