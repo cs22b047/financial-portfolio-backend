@@ -55,6 +55,79 @@ Access stock prices, market information, and search for securities.
 
 ---
 
+## 📉 Technical Indicators API
+**Base URL:** `/api/technical-indicators`
+
+Access calculated technical analysis indicators (RSI, MACD, Bollinger Bands, Moving Averages, etc.).
+
+### Get Technical Indicators
+| Method | Endpoint | Description | Parameters |
+|--------|----------|-------------|------------|
+| GET | `/api/technical-indicators/symbol/{symbol}` | Get all indicators for stock | `symbol` (path) |
+| GET | `/api/technical-indicators/symbol/{symbol}/latest` | Get latest indicators for stock | `symbol` (path) |
+| GET | `/api/technical-indicators/symbol/{symbol}/range` | Get indicators by date range | `symbol` (path), `startDate`, `endDate` (query) |
+| GET | `/api/technical-indicators/market-data/{marketDataId}` | Get all indicators by market data ID | `marketDataId` (path) |
+| GET | `/api/technical-indicators/market-data/{marketDataId}/latest` | Get latest indicators by market data ID | `marketDataId` (path) |
+| GET | `/api/technical-indicators/market-data/{marketDataId}/range` | Get indicators by market data ID and date range | `marketDataId` (path), `startDate`, `endDate` (query) |
+| GET | `/api/technical-indicators/price-history/{priceHistoryId}` | Get indicators by price history ID | `priceHistoryId` (path) |
+
+### Manage Technical Indicators
+| Method | Endpoint | Description | Request Body |
+|--------|----------|-------------|--------------|
+| POST | `/api/technical-indicators` | Create/update technical indicators | `{ priceHistoryId, indicatorDate, rsi, macd, ... }` |
+| POST | `/api/technical-indicators/batch` | Batch create indicators | Array of indicator objects |
+| DELETE | `/api/technical-indicators/{id}` | Delete technical indicators | - |
+
+**Available Indicators:**
+- **Returns**: Daily, Cumulative, Log Returns
+- **Moving Averages**: SMA (20, 50, 200), EMA (12, 26)
+- **MACD**: MACD, Signal Line, Histogram
+- **Bollinger Bands**: Upper, Middle, Lower, Width
+- **RSI**: Relative Strength Index (0-100)
+- **ATR**: Average True Range (volatility)
+- **Volume**: 20-day SMA, Volume Ratio
+- **Momentum**: 10-day Momentum, ROC
+- **Stochastic**: K and D oscillators
+
+---
+
+## 📊 Stock Summary API
+**Base URL:** `/api/stock-summary`
+
+Access aggregated stock statistics including returns, volatility, risk metrics, and performance rankings.
+
+### Get Stock Summaries
+| Method | Endpoint | Description | Parameters |
+|--------|----------|-------------|------------|
+| GET | `/api/stock-summary/symbol/{symbol}` | Get all summaries for stock | `symbol` (path) |
+| GET | `/api/stock-summary/symbol/{symbol}/period/{period}` | Get summary for specific period | `symbol` (path), `period` (path: 1y, 5y, 10y, etc.) |
+| GET | `/api/stock-summary/market-data/{marketDataId}` | Get summaries by market data ID | `marketDataId` (path) |
+| GET | `/api/stock-summary/market-data/{marketDataId}/period/{period}` | Get summary by market data ID and period | `marketDataId` (path), `period` (path) |
+
+### Performance Rankings
+| Method | Endpoint | Description | Parameters |
+|--------|----------|-------------|------------|
+| GET | `/api/stock-summary/top-performers/{period}` | Top performing stocks by return | `period` (path), `limit` (query, default=10) |
+| GET | `/api/stock-summary/best-sharpe/{period}` | Best risk-adjusted returns | `period` (path), `limit` (query, default=10) |
+| GET | `/api/stock-summary/lowest-volatility/{period}` | Lowest volatility stocks | `period` (path), `limit` (query, default=10) |
+| GET | `/api/stock-summary/highest-volatility/{period}` | Highest volatility stocks | `period` (path), `limit` (query, default=10) |
+
+### Manage Stock Summaries
+| Method | Endpoint | Description | Request Body |
+|--------|----------|-------------|--------------|
+| POST | `/api/stock-summary` | Create/update stock summary | `{ marketDataId, period, startDate, endDate, totalReturn, ... }` |
+| POST | `/api/stock-summary/batch` | Batch create summaries | Array of summary objects |
+| DELETE | `/api/stock-summary/{id}` | Delete stock summary | - |
+
+**Summary Metrics:**
+- **Return Metrics**: Total Return, Annualized Return, Average Daily Return
+- **Risk Metrics**: Volatility (Daily/Annualized), Sharpe Ratio, VaR (95%, 99%), Max Drawdown
+- **Price Stats**: Start/End/Min/Max/Average Price
+- **Volume Stats**: Average/Max/Min Volume
+- **Trading Days**: Number of trading days in period
+
+---
+
 ## 🔄 Transactions API
 **Base URL:** `/api/transactions`
 
@@ -242,6 +315,7 @@ Manage user preferences and application settings.
 - **Date Range**: `startDate` and `endDate` in ISO format (YYYY-MM-DD)
 - **Limit**: Maximum number of results to return (default varies by endpoint)
 - **Search**: `query` parameter for text search
+- **Period**: Time period for historical data (1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max)
 
 ### Common Response Codes
 - **200 OK**: Successful GET/PUT request
@@ -258,7 +332,7 @@ Currently, all endpoints are open (CORS enabled for all origins).
 
 ## 📦 Database Schema
 
-**Core Tables (10):**
+**Core Tables (12):**
 1. **asset_types** - Asset type reference (STOCK, ETF, CRYPTO, BOND, CASH)
 2. **assets** - User's portfolio holdings and watchlist
 3. **currencies** - Currency reference data
@@ -267,12 +341,14 @@ Currently, all endpoints are open (CORS enabled for all origins).
 6. **market_data** - Real-time market prices and data
 7. **news** - Financial news articles
 8. **price_history** - Historical OHLCV price data
-9. **transactions** - Buy/sell transaction history
-10. **user_settings** - User preferences
+9. **technical_indicators** - Technical analysis indicators (RSI, MACD, Bollinger Bands, etc.)
+10. **stock_summary** - Aggregated stock statistics (returns, volatility, risk metrics)
+11. **transactions** - Buy/sell transaction history
+12. **user_settings** - User preferences
 
 ---
 
-**Total Controllers**: 7  
-**Total Endpoints**: 96
+**Total Controllers**: 9
+**Total Endpoints**: 123
 
 Last Updated: February 3, 2026
