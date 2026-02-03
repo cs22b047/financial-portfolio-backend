@@ -116,6 +116,54 @@ Manage stock/asset metadata and information.
 
 ---
 
+## 🌱 ESG Ratings API
+**Base URL:** `/api/esg-ratings`
+
+Environmental, Social, and Governance (ESG) sustainability ratings for stocks.
+
+### Get ESG Ratings
+| Method | Endpoint | Description | Parameters |
+|--------|----------|-------------|------------|
+| GET | `/api/esg-ratings` | Get all ESG ratings | - |
+| GET | `/api/esg-ratings/{id}` | Get ESG rating by ID | `id` (path) |
+| GET | `/api/esg-ratings/symbol/{symbol}` | Get ESG rating by stock symbol | `symbol` (path) |
+| GET | `/api/esg-ratings/top-performers` | Top ESG performers | `limit` (query, default=10) |
+| GET | `/api/esg-ratings/grade/{grade}` | Filter by grade (A+, A, A-, B+, etc.) | `grade` (path) |
+| GET | `/api/esg-ratings/above-score` | Ratings above score threshold | `minScore` (query) |
+| GET | `/api/esg-ratings/controversy/{level}` | By controversy level (0-4) | `level` (path) |
+| GET | `/api/esg-ratings/low-controversy` | Low controversy ratings (0-2) | - |
+| GET | `/api/esg-ratings/risk/{riskLevel}` | By risk level | `riskLevel` (path) |
+| GET | `/api/esg-ratings/exists/{symbol}` | Check if rating exists | `symbol` (path) |
+
+### ESG Pillar Scores
+| Method | Endpoint | Description | Parameters |
+|--------|----------|-------------|------------|
+| GET | `/api/esg-ratings/high-environment` | High environment scores | `minScore` (query, default=75) |
+| GET | `/api/esg-ratings/high-social` | High social scores | `minScore` (query, default=75) |
+| GET | `/api/esg-ratings/high-governance` | High governance scores | `minScore` (query, default=75) |
+
+### Analytics
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/esg-ratings/statistics` | ESG statistics (averages, grade distribution) |
+
+### Manage ESG Ratings
+| Method | Endpoint | Description | Request Body |
+|--------|----------|-------------|--------------|
+| POST | `/api/esg-ratings` | Create new ESG rating | `{ symbol, totalScore, totalGrade, ... }` |
+| PUT | `/api/esg-ratings/symbol/{symbol}` | Update ESG rating | `{ totalScore, totalGrade, ... }` |
+| DELETE | `/api/esg-ratings/{id}` | Delete by ID | - |
+| DELETE | `/api/esg-ratings/symbol/{symbol}` | Delete by symbol | - |
+
+**ESG Rating Structure:**
+- **Total Score**: 0-100 (Overall ESG performance)
+- **Grades**: A+, A, A-, B+, B, B-, C+, C, C-
+- **Pillars**: Environment, Social, Governance (each 0-100)
+- **Controversy Level**: 0 (Negligible) to 4 (Severe)
+- **Risk Level**: Negligible, Low, Medium, High, Severe
+
+---
+
 ## 📁 Portfolio API
 **Base URL:** `/api/portfolio`
 
@@ -167,7 +215,7 @@ Currently, all endpoints are open (CORS enabled for all origins).
 
 ---
 
-**Total Controllers**: 6  
-**Total Endpoints**: 60+
+**Total Controllers**: 7  
+**Total Endpoints**: 78+
 
 Last Updated: February 3, 2026
