@@ -9,6 +9,9 @@ import java.time.LocalDateTime;
 /**
  * Dividend entity matching the simplified dividends table.
  * 
+ * Relationships:
+ * - Many Dividends -> One Asset
+ * 
  * CRITICAL CALCULATION LOGIC:
  * ✅ shares_held - Retrieved from assets.quantity (not from API)
  * ✅ total_amount - Calculated as amount_per_share × shares_held

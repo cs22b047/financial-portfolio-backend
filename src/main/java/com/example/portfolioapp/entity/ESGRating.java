@@ -6,7 +6,10 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * ESGRating entity for Environmental, Social, and Governance ratings
+ * ESGRating entity for Environmental, Social, and Governance ratings.
+ * 
+ * Relationships:
+ * - Many ESGRatings -> One MarketData
  */
 @Entity
 @Table(name = "esg_ratings",

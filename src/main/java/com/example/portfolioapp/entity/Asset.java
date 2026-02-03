@@ -11,6 +11,12 @@ import java.util.List;
 /**
  * Asset entity matching the simplified assets table.
  * User's relationship with a stock - either WATCHLIST or OWNED.
+ * 
+ * Relationships:
+ * - Many Assets -> One AssetType
+ * - Many Assets -> One MarketData (unique constraint)
+ * - One Asset -> Many Transactions
+ * - One Asset -> Many Dividends
  */
 @Entity
 @Table(name = "assets",

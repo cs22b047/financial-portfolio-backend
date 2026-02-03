@@ -26,6 +26,7 @@ import java.util.Optional;
 
 /**
  * Service for Asset operations (user's watchlist and owned stocks)
+ * Primary data source: assets table, with market_data references for market info
  */
 @Service
 public class AssetService {
@@ -43,6 +44,7 @@ public class AssetService {
 
     /**
      * Buy stock - creates new or updates existing owned asset
+     * Queries assets table first, uses market_data for new asset creation
      */
     @Transactional
     public Asset buyStock(String symbol, BigDecimal quantity, BigDecimal price, LocalDate transactionDate) {
@@ -55,19 +57,15 @@ public class AssetService {
             throw new InvalidOperationException("Price must be greater than zero");
         }
 
-        MarketData marketData = marketDataRepository.findBySymbol(symbol)
-                .orElseThrow(() -> new ResourceNotFoundException("MarketData", "symbol", symbol));
-
-        // Check if owned asset exists
-        Optional<Asset> existingOwnedAsset = assetRepository.findByMarketDataIdAndStatus(
-            marketData.getId(), AssetStatus.OWNED);
+        // First check if asset already exists in assets table
+        Optional<Asset> existingAsset = assetRepository.findBySymbol(symbol);
 
         Asset asset;
-        if (existingOwnedAsset.isPresent()) {
-            // Update existing asset with weighted average cost
-            asset = existingOwnedAsset.get();
+        if (existingAsset.isPresent() && existingAsset.get().getStatus() == AssetStatus.OWNED) {
+            // Update existing owned asset with weighted average cost
+            asset = existingAsset.get();
             BigDecimal oldQuantity = asset.getQuantity();
-            BigDecimal oldCost = asset.getAverageCost();
+            BigDecimal oldCost = asset.getAverageCost() != null ? asset.getAverageCost() : price;
             BigDecimal newQuantity = oldQuantity.add(quantity);
             
             // Weighted average cost = (old_qty * old_cost + new_qty * new_price) / total_qty
@@ -76,15 +74,27 @@ public class AssetService {
             
             asset.setQuantity(newQuantity);
             asset.setAverageCost(avgCost);
-            asset.setCurrentPrice(marketData.getCurrentPrice());
+            asset.setCurrentPrice(price);
+        } else if (existingAsset.isPresent()) {
+            // Convert from WATCHLIST/RESEARCH to OWNED
+            asset = existingAsset.get();
+            asset.setStatus(AssetStatus.OWNED);
+            asset.setQuantity(quantity);
+            asset.setAverageCost(price);
+            asset.setPurchasePrice(price);
+            asset.setPurchaseDate(transactionDate);
+            asset.setCurrentPrice(price);
         } else {
-            // Create new owned asset
+            // Asset doesn't exist in assets table - create from market_data
+            MarketData marketData = marketDataRepository.findBySymbol(symbol)
+                    .orElseThrow(() -> new ResourceNotFoundException("MarketData", "symbol", symbol));
+            
             asset = new Asset(marketData, AssetStatus.OWNED);
             asset.setQuantity(quantity);
             asset.setAverageCost(price);
             asset.setPurchasePrice(price);
             asset.setPurchaseDate(transactionDate);
-            asset.setCurrentPrice(marketData.getCurrentPrice());
+            asset.setCurrentPrice(price);
         }
 
         asset = assetRepository.save(asset);
@@ -96,7 +106,9 @@ public class AssetService {
         transaction.setQuantity(quantity);
         transaction.setPrice(price);
         transaction.setTransactionDate(transactionDate.atStartOfDay());
-        transaction.setCurrency(marketData.getCurrency());
+        // Get currency from market_data reference
+        transaction.setCurrency(asset.getMarketData() != null ? 
+            asset.getMarketData().getCurrency() : "USD");
         transactionRepository.save(transaction);
 
         return asset;
@@ -133,7 +145,9 @@ public class AssetService {
         transaction.setQuantity(quantity);
         transaction.setPrice(price);
         transaction.setTransactionDate(transactionDate.atStartOfDay());
-        transaction.setCurrency(asset.getMarketData().getCurrency());
+        // Get currency from market_data reference
+        transaction.setCurrency(asset.getMarketData() != null ? 
+            asset.getMarketData().getCurrency() : "USD");
         transactionRepository.save(transaction);
 
         // Update or delete asset
@@ -151,21 +165,30 @@ public class AssetService {
 
     /**
      * Add stock to watchlist
+     * Queries assets table first, creates from market_data if needed
      */
     @Transactional
     public Asset addToWatchlist(String symbol) {
         logger.info("Adding symbol to watchlist: {}", symbol);
 
-        // Find or create market data
+        // Check if asset already exists in assets table
+        Optional<Asset> existing = assetRepository.findBySymbol(symbol);
+        if (existing.isPresent()) {
+            Asset asset = existing.get();
+            if (asset.getStatus() == AssetStatus.WATCHLIST) {
+                throw new DuplicateResourceException("Watchlist asset already exists for symbol: " + symbol);
+            } else if (asset.getStatus() == AssetStatus.OWNED) {
+                throw new InvalidOperationException("Cannot add owned asset to watchlist: " + symbol);
+            }
+            // Convert RESEARCH/SOLD to WATCHLIST
+            asset.setStatus(AssetStatus.WATCHLIST);
+            asset.setAddedToWatchlistDate(LocalDate.now());
+            return assetRepository.save(asset);
+        }
+
+        // Asset doesn't exist - create from market_data
         MarketData marketData = marketDataRepository.findBySymbol(symbol)
                 .orElseThrow(() -> new ResourceNotFoundException("MarketData", "symbol", symbol));
-
-        // Check if already in watchlist
-        Optional<Asset> existing = assetRepository.findByMarketDataIdAndStatus(
-            marketData.getId(), AssetStatus.WATCHLIST);
-        if (existing.isPresent()) {
-            throw new DuplicateResourceException("Watchlist asset already exists for symbol: " + symbol);
-        }
 
         Asset asset = new Asset(marketData, AssetStatus.WATCHLIST);
         asset.setAddedToWatchlistDate(LocalDate.now());
@@ -177,20 +200,16 @@ public class AssetService {
 
     /**
      * Mark asset as owned (convert from watchlist or create new)
+     * Queries assets table, updates current_price from market_data
      */
     @Transactional
     public Asset markAsOwned(String symbol, BigDecimal quantity, BigDecimal purchasePrice, LocalDate purchaseDate) {
         logger.info("Marking symbol as owned: {}, quantity: {}, price: {}", symbol, quantity, purchasePrice);
 
-        Asset asset = assetRepository.findBySymbol(symbol).orElse(null);
+        Asset asset = assetRepository.findBySymbol(symbol)
+                .orElseThrow(() -> new ResourceNotFoundException("Asset", "symbol", symbol));
         
-        if (asset == null) {
-            // Create new owned asset
-            MarketData marketData = marketDataRepository.findBySymbol(symbol)
-                    .orElseThrow(() -> new ResourceNotFoundException("MarketData", "symbol", symbol));
-            
-            asset = new Asset(marketData, AssetStatus.OWNED);
-        } else if (asset.getStatus() == AssetStatus.OWNED) {
+        if (asset.getStatus() == AssetStatus.OWNED) {
             throw new InvalidOperationException("Asset is already owned: " + symbol);
         }
 
@@ -199,10 +218,14 @@ public class AssetService {
         asset.setQuantity(quantity);
         asset.setPurchasePrice(purchasePrice);
         asset.setPurchaseDate(purchaseDate);
+        asset.setAverageCost(purchasePrice);
         
-        // Update current price from market data
-        MarketData marketData = asset.getMarketData();
-        asset.setCurrentPrice(marketData.getCurrentPrice());
+        // Update current price from market_data reference
+        if (asset.getMarketData() != null) {
+            asset.setCurrentPrice(asset.getMarketData().getCurrentPrice());
+        } else {
+            asset.setCurrentPrice(purchasePrice);
+        }
 
         return assetRepository.save(asset);
     }
@@ -230,19 +253,21 @@ public class AssetService {
     }
 
     /**
-     * Update current prices for all owned assets
+     * Update current prices for all owned assets from market_data references
+     * Syncs asset.current_price with market_data.current_price
      */
     @Transactional
     public void updateAllCurrentPrices() {
         List<Asset> ownedAssets = assetRepository.findAllOwned();
         
         for (Asset asset : ownedAssets) {
-            MarketData marketData = asset.getMarketData();
-            asset.setCurrentPrice(marketData.getCurrentPrice());
+            if (asset.getMarketData() != null) {
+                asset.setCurrentPrice(asset.getMarketData().getCurrentPrice());
+            }
         }
         
         assetRepository.saveAll(ownedAssets);
-        logger.info("Updated current prices for {} owned assets", ownedAssets.size());
+        logger.info("Updated current prices for {} owned assets from market_data", ownedAssets.size());
     }
 
     /**
@@ -394,19 +419,31 @@ public class AssetService {
 
     /**
      * Add to watchlist with optional target price
+     * Queries assets table first, creates from market_data if needed
      */
     @Transactional
     public Asset addToWatchlist(String symbol, BigDecimal targetPrice) {
         logger.info("Adding symbol to watchlist: {} with target price: {}", symbol, targetPrice);
 
+        // Check if asset already exists in assets table
+        Optional<Asset> existing = assetRepository.findBySymbol(symbol);
+        if (existing.isPresent()) {
+            Asset asset = existing.get();
+            if (asset.getStatus() == AssetStatus.WATCHLIST) {
+                throw new DuplicateResourceException("Watchlist asset already exists for symbol: " + symbol);
+            } else if (asset.getStatus() == AssetStatus.OWNED) {
+                throw new InvalidOperationException("Cannot add owned asset to watchlist: " + symbol);
+            }
+            // Convert RESEARCH/SOLD to WATCHLIST
+            asset.setStatus(AssetStatus.WATCHLIST);
+            asset.setAddedToWatchlistDate(LocalDate.now());
+            asset.setTargetPrice(targetPrice);
+            return assetRepository.save(asset);
+        }
+
+        // Asset doesn't exist - create from market_data
         MarketData marketData = marketDataRepository.findBySymbol(symbol)
                 .orElseThrow(() -> new ResourceNotFoundException("MarketData", "symbol", symbol));
-
-        Optional<Asset> existing = assetRepository.findByMarketDataIdAndStatus(
-            marketData.getId(), AssetStatus.WATCHLIST);
-        if (existing.isPresent()) {
-            throw new DuplicateResourceException("Watchlist asset already exists for symbol: " + symbol);
-        }
 
         Asset asset = new Asset(marketData, AssetStatus.WATCHLIST);
         asset.setAddedToWatchlistDate(LocalDate.now());
