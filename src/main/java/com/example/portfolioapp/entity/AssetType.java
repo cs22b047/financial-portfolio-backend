@@ -1,5 +1,6 @@
 package com.example.portfolioapp.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -42,9 +43,11 @@ public class AssetType {
     private LocalDateTime updatedDate;
 
     // Relationships
+    @JsonIgnore
     @OneToMany(mappedBy = "assetType", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<MarketData> marketDataList = new ArrayList<>();
 
+    @JsonIgnore
     @OneToMany(mappedBy = "assetType", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Asset> assets = new ArrayList<>();
 

@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio Tracker - Investment Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <h1>� Portfolio Tracker</h1>
+                <p class="tagline">Manage Your Investments with Confidence</p>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-primary" onclick="refreshAll()">🔄 Refresh</button>
+                <div class="time-display" id="lastUpdate">Last updated: Never</div>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="nav-tabs">
+            <button class="tab-btn active" onclick="showTab('dashboard')">📊 Dashboard</button>
+            <button class="tab-btn" onclick="showTab('positions')">📈 Positions</button>
+            <button class="tab-btn" onclick="showTab('market')">💹 Market</button>
+            <button class="tab-btn" onclick="showTab('transactions')">💸 Transactions</button>
+            <button class="tab-btn" onclick="showTab('dividends')">💰 Dividends</button>
+            <button class="tab-btn" onclick="showTab('trade')">🛒 Trade</button>
+            <button class="tab-btn" onclick="showTab('analytics')">📉 Analytics</button>
+        </nav>
+
+        <!-- Dashboard Tab -->
+        <div id="dashboard" class="tab-content active">
+            <h2>Portfolio Overview</h2>
+            
+            <div class="summary-cards">
+                <div class="card">
+                    <div class="card-icon">💵</div>
+                    <div class="card-header">Total Value</div>
+                    <div class="card-value" id="totalValue">$0.00</div>
+                    <div class="card-subtitle">Portfolio Value</div>
+                </div>
+                <div class="card">
+                    <div class="card-icon">📊</div>
+                    <div class="card-header">Total Gain/Loss</div>
+                    <div class="card-value" id="totalGainLoss">$0.00</div>
+                    <div class="card-subtitle" id="totalGainLossPercent">0.00%</div>
+                </div>
+                <div class="card">
+                    <div class="card-icon">📈</div>
+                    <div class="card-header">Positions</div>
+                    <div class="card-value" id="totalPositions">0</div>
+                    <div class="card-subtitle">Active Holdings</div>
+                </div>
+                <div class="card">
+                    <div class="card-header">Dividend Income</div>
+                    <div class="card-value" id="dividendIncome">$0.00</div>
+                    <div class="card-subtitle">Total Received</div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-half">
+                    <div class="card-container">
+                        <h3>Top Performers</h3>
+                        <div id="topPerformers" class="list-container"></div>
+                    </div>
+                </div>
+                <div class="col-half">
+                    <div class="card-container">
+                        <h3>Allocation by Type</h3>
+                        <div id="allocationByType" class="list-container"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-container">
+                <h3>Largest Positions</h3>
+                <div id="largestPositions" class="table-container"></div>
+            </div>
+        </div>
+
+        <!-- Positions Tab -->
+        <div id="positions" class="tab-content">
+            <h2>My Positions</h2>
+            
+            <div class="section-tabs">
+                <button class="section-btn active" onclick="showPositionSection('open')">Open Positions</button>
+                <button class="section-btn" onclick="showPositionSection('watchlist')">Watchlist</button>
+            </div>
+
+            <div id="openPositions" class="position-section active">
+                <div class="table-container" id="openPositionsTable"></div>
+            </div>
+
+            <div id="watchlistPositions" class="position-section">
+                <div class="action-bar">
+                    <input type="text" id="watchlistSymbol" placeholder="Enter symbol (e.g., AAPL)" class="input-field">
+                    <button class="btn btn-primary" onclick="addToWatchlist()">Add to Watchlist</button>
+                </div>
+                <div class="table-container" id="watchlistTable"></div>
+            </div>
+        </div>
+
+        <!-- Market Data Tab -->
+        <div id="market" class="tab-content">
+            <h2>Market Data</h2>
+            
+            <div class="action-bar">
+                <input type="text" id="searchSymbol" placeholder="Search by symbol..." class="input-field">
+                <button class="btn btn-primary" onclick="searchMarketData()">Search</button>
+            </div>
+
+            <div class="row">
+                <div class="col-half">
+                    <div class="card-container">
+                        <h3>📈 Top Gainers</h3>
+                        <div id="topGainers" class="list-container"></div>
+                    </div>
+                </div>
+                <div class="col-half">
+                    <div class="card-container">
+                        <h3>📉 Top Losers</h3>
+                        <div id="topLosers" class="list-container"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-container">
+                <h3>All Market Data</h3>
+                <div class="table-container" id="allMarketData"></div>
+            </div>
+        </div>
+
+        <!-- Transactions Tab -->
+        <div id="transactions" class="tab-content">
+            <h2>Transaction History</h2>
+            
+            <div class="action-bar">
+                <input type="date" id="transStartDate" class="input-field">
+                <input type="date" id="transEndDate" class="input-field">
+                <button class="btn btn-primary" onclick="filterTransactions()">Filter by Date</button>
+                <button class="btn btn-secondary" onclick="loadAllTransactions()">Show All</button>
+            </div>
+
+            <div class="summary-cards">
+                <div class="card">
+                    <div class="card-header">Total Invested</div>
+                    <div class="card-value" id="totalInvested">$0.00</div>
+                </div>
+                <div class="card">
+                    <div class="card-header">Realized Gains</div>
+                    <div class="card-value" id="realizedGains">$0.00</div>
+                </div>
+            </div>
+
+            <div class="table-container" id="transactionsTable"></div>
+        </div>
+
+        <!-- Dividends Tab -->
+        <div id="dividends" class="tab-content">
+            <h2>Dividend Income</h2>
+            
+            <div class="action-bar">
+                <input type="date" id="divStartDate" class="input-field">
+                <input type="date" id="divEndDate" class="input-field">
+                <button class="btn btn-primary" onclick="filterDividends()">Filter by Date</button>
+                <button class="btn btn-secondary" onclick="loadAllDividends()">Show All</button>
+            </div>
+
+            <div class="card-container">
+                <h3>Recent Dividends</h3>
+                <div class="table-container" id="dividendsTable"></div>
+            </div>
+
+            <div class="card-container">
+                <h3>Record New Dividend</h3>
+                <div class="form-container">
+                    <div class="form-group">
+                        <label>Stock Symbol</label>
+                        <input type="text" id="divSymbol" placeholder="e.g., AAPL" class="input-field">
+                    </div>
+                    <div class="form-group">
+                        <label>Payment Date</label>
+                        <input type="date" id="divPaymentDate" class="input-field">
+                    </div>
+                    <div class="form-group">
+                        <label>Amount Per Share</label>
+                        <input type="number" id="divAmount" step="0.01" placeholder="0.00" class="input-field">
+                    </div>
+                    <button class="btn btn-success" onclick="recordDividend()">Record Dividend</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trade Tab -->
+        <div id="trade" class="tab-content">
+            <h2>Buy/Sell Stocks</h2>
+            
+            <div class="row">
+                <div class="col-half">
+                    <div class="card-container">
+                        <h3>🛒 Buy Stock</h3>
+                        <div class="form-container">
+                            <div class="form-group">
+                                <label>Symbol</label>
+                                <input type="text" id="buySymbol" placeholder="e.g., AAPL" class="input-field">
+                            </div>
+                            <div class="form-group">
+                                <label>Quantity</label>
+                                <input type="number" id="buyQuantity" placeholder="0" class="input-field">
+                            </div>
+                            <div class="form-group">
+                                <label>Price per Share</label>
+                                <input type="number" id="buyPrice" step="0.01" placeholder="0.00" class="input-field">
+                            </div>
+                            <div class="form-group">
+                                <label>Transaction Date</label>
+                                <input type="date" id="buyDate" class="input-field">
+                            </div>
+                            <div class="form-summary">
+                                <strong>Total Cost: $<span id="buyTotal">0.00</span></strong>
+                            </div>
+                            <button class="btn btn-success" onclick="buyStock()">Execute Buy Order</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-half">
+                    <div class="card-container">
+                        <h3>💰 Sell Stock</h3>
+                        <div class="form-container">
+                            <div class="form-group">
+                                <label>Select Position</label>
+                                <select id="sellPositionId" class="input-field" onchange="updateSellForm()">
+                                    <option value="">-- Select Position --</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Available Shares</label>
+                                <input type="text" id="sellAvailable" class="input-field" disabled>
+                            </div>
+                            <div class="form-group">
+                                <label>Quantity to Sell</label>
+                                <input type="number" id="sellQuantity" placeholder="0" class="input-field">
+                            </div>
+                            <div class="form-group">
+                                <label>Price per Share</label>
+                                <input type="number" id="sellPrice" step="0.01" placeholder="0.00" class="input-field">
+                            </div>
+                            <div class="form-group">
+                                <label>Transaction Date</label>
+                                <input type="date" id="sellDate" class="input-field">
+                            </div>
+                            <div class="form-summary">
+                                <strong>Total Proceeds: $<span id="sellTotal">0.00</span></strong>
+                            </div>
+                            <button class="btn btn-danger" onclick="sellStock()">Execute Sell Order</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>

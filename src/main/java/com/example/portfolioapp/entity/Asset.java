@@ -1,5 +1,6 @@
 package com.example.portfolioapp.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -81,9 +82,11 @@ public class Asset {
     private LocalDateTime updatedDate;
 
     // Relationships
+    @JsonIgnore
     @OneToMany(mappedBy = "asset", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Transaction> transactions = new ArrayList<>();
 
+    @JsonIgnore
     @OneToMany(mappedBy = "asset", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Dividend> dividends = new ArrayList<>();
 

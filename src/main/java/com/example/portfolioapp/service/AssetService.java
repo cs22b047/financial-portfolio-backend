@@ -370,4 +370,92 @@ public class AssetService {
         BigDecimal totalCost = getTotalInvestmentCost();
         return totalValue.subtract(totalCost);
     }
+
+    /**
+     * Get all assets (all statuses)
+     */
+    public List<Asset> getAllAssets() {
+        return assetRepository.findAll();
+    }
+
+    /**
+     * Get asset by ID (returns Optional)
+     */
+    public Optional<Asset> getAssetById(Long id) {
+        return assetRepository.findById(id);
+    }
+
+    /**
+     * Get assets by status
+     */
+    public List<Asset> getAssetsByStatus(AssetStatus status) {
+        return assetRepository.findByStatus(status);
+    }
+
+    /**
+     * Add to watchlist with optional target price
+     */
+    @Transactional
+    public Asset addToWatchlist(String symbol, BigDecimal targetPrice) {
+        logger.info("Adding symbol to watchlist: {} with target price: {}", symbol, targetPrice);
+
+        MarketData marketData = marketDataRepository.findBySymbol(symbol)
+                .orElseThrow(() -> new ResourceNotFoundException("MarketData", "symbol", symbol));
+
+        Optional<Asset> existing = assetRepository.findByMarketDataIdAndStatus(
+            marketData.getId(), AssetStatus.WATCHLIST);
+        if (existing.isPresent()) {
+            throw new DuplicateResourceException("Watchlist asset already exists for symbol: " + symbol);
+        }
+
+        Asset asset = new Asset(marketData, AssetStatus.WATCHLIST);
+        asset.setAddedToWatchlistDate(LocalDate.now());
+        asset.setTargetPrice(targetPrice);
+        asset.setQuantity(BigDecimal.ZERO);
+        asset.setAverageCost(BigDecimal.ZERO);
+        
+        return assetRepository.save(asset);
+    }
+
+    /**
+     * Remove from watchlist by ID
+     */
+    @Transactional
+    public void removeFromWatchlist(Long id) {
+        Asset asset = assetRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Asset", id));
+        
+        if (asset.getStatus() != AssetStatus.WATCHLIST) {
+            throw new InvalidOperationException("Can only remove WATCHLIST assets. Asset status: " + asset.getStatus());
+        }
+        
+        assetRepository.delete(asset);
+        logger.info("Removed from watchlist: {}", asset.getSymbol());
+    }
+
+    /**
+     * Update asset
+     */
+    @Transactional
+    public Asset updateAsset(Long id, Asset updates) {
+        Asset asset = assetRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Asset", id));
+
+        // Update allowed fields
+        if (updates.getTargetPrice() != null) {
+            asset.setTargetPrice(updates.getTargetPrice());
+        }
+        if (updates.getNotes() != null) {
+            asset.setNotes(updates.getNotes());
+        }
+        if (updates.getPriorityRank() != null) {
+            asset.setPriorityRank(updates.getPriorityRank());
+        }
+        if (updates.getPriceAlertsEnabled() != null) {
+            asset.setPriceAlertsEnabled(updates.getPriceAlertsEnabled());
+        }
+
+        asset.setUpdatedDate(LocalDateTime.now());
+        return assetRepository.save(asset);
+    }
 }
