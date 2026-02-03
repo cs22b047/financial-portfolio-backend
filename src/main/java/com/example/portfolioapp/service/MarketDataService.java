@@ -3,6 +3,7 @@ package com.example.portfolioapp.service;
 import com.example.portfolioapp.entity.MarketData;
 import com.example.portfolioapp.exception.ResourceNotFoundException;
 import com.example.portfolioapp.repository.MarketDataRepository;
+import com.example.portfolioapp.repository.AssetTypeRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +22,9 @@ public class MarketDataService {
 
     @Autowired
     private MarketDataRepository marketDataRepository;
+
+    @Autowired
+    private AssetTypeRepository assetTypeRepository;
 
     /**
      * Create or update market data for a symbol
@@ -108,6 +112,19 @@ public class MarketDataService {
      */
     public List<MarketData> getAllMarketData() {
         return marketDataRepository.findAll();
+    }
+
+    /**
+     * Get market data by asset type
+     */
+    public List<MarketData> getByAssetType(Long assetTypeId) {
+        // Validate that asset type exists
+        if (!assetTypeRepository.existsById(assetTypeId)) {
+            throw new ResourceNotFoundException("AssetType", "id", assetTypeId);
+        }
+        
+        logger.info("Fetching market data for asset type ID: {}", assetTypeId);
+        return marketDataRepository.findByAssetTypeId(assetTypeId);
     }
 
     /**

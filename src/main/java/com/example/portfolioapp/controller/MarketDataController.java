@@ -88,6 +88,15 @@ public class MarketDataController {
     }
 
     /**
+     * Get market data by asset type
+     */
+    @GetMapping("/asset-type/{assetTypeId}")
+    public ResponseEntity<List<MarketData>> getByAssetType(@PathVariable Long assetTypeId) {
+        List<MarketData> assets = marketDataService.getByAssetType(assetTypeId);
+        return ResponseEntity.ok(assets);
+    }
+
+    /**
      * Delete market data
      */
     @DeleteMapping("/{id}")

@@ -106,11 +106,19 @@
 
         <!-- Market Data Tab -->
         <div id="market" class="tab-content">
-            <h2>Market Data - Browse & Trade Stocks</h2>
+            <h2>Market Data - Browse & Trade Assets</h2>
             
             <div class="action-bar">
                 <input type="text" id="searchSymbol" placeholder="Search by symbol..." class="input-field">
                 <button class="btn btn-primary" onclick="searchMarketData()">🔍 Search</button>
+                <select id="assetTypeFilter" class="input-field" onchange="filterByAssetType()">
+                    <option value="">All Assets</option>
+                    <option value="1">Stocks</option>
+                    <option value="6">Mutual Funds</option>
+                    <option value="2">ETFs</option>
+                    <option value="4">Bonds</option>
+                    <option value="3">Crypto</option>
+                </select>
                 <select id="sectorFilter" class="input-field" onchange="filterBySector()">
                     <option value="">All Sectors</option>
                     <option value="Technology">Technology</option>

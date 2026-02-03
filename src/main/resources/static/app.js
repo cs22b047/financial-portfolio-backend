@@ -485,6 +485,31 @@ async function filterBySector() {
     }
 }
 
+async function filterByAssetType() {
+    const assetTypeId = document.getElementById('assetTypeFilter').value;
+    
+    if (!assetTypeId) {
+        loadMarketData();
+        return;
+    }
+    
+    try {
+        const data = await fetchAPI(`/market-data/asset-type/${assetTypeId}`);
+        const assetTypeNames = {
+            '1': 'Stocks',
+            '2': 'ETFs',
+            '3': 'Crypto',
+            '4': 'Bonds',
+            '6': 'Mutual Funds'
+        };
+        displayAllMarketData(data);
+        showToast(`Showing ${assetTypeNames[assetTypeId] || 'Assets'}`, 'info');
+    } catch (error) {
+        console.error('Error filtering by asset type:', error);
+        showToast('Error filtering market data', 'error');
+    }
+}
+
 // ==================== TRANSACTIONS ====================
 
 async function loadAllTransactions() {

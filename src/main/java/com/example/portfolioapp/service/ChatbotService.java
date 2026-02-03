@@ -6,7 +6,7 @@ import com.example.portfolioapp.exception.ChatbotException;
 import com.example.portfolioapp.exception.ResourceNotFoundException;
 import com.example.portfolioapp.repository.ChatMessageRepository;
 import com.example.portfolioapp.repository.ConversationRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
+// import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,8 +37,8 @@ public class ChatbotService {
     @Autowired
     private RestTemplate restTemplate;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    // @Autowired
+    // private ObjectMapper objectMapper;
 
     @Value("${chatbot.python.url:http://localhost:5000}")
     private String pythonServiceUrl;
@@ -191,10 +191,10 @@ public class ChatbotService {
         // Serialize data and tables to JSON
         try {
             if (pythonResponse.getData() != null) {
-                message.setSqlResult(objectMapper.writeValueAsString(pythonResponse.getData()));
+                message.setSqlResult(String.valueOf(pythonResponse.getData()));
             }
             if (pythonResponse.getTables_used() != null && !pythonResponse.getTables_used().isEmpty()) {
-                message.setTablesAccessed(objectMapper.writeValueAsString(pythonResponse.getTables_used()));
+                message.setTablesAccessed(String.valueOf(pythonResponse.getTables_used()));
             }
         } catch (Exception e) {
             logger.warn("Failed to serialize response data: {}", e.getMessage());
