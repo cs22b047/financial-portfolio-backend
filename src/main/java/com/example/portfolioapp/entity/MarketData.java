@@ -1,5 +1,6 @@
 package com.example.portfolioapp.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -9,6 +10,13 @@ import java.util.List;
 /**
  * MarketData entity matching the simplified market_data table.
  * Master table for ALL stocks/assets data, regardless of user ownership.
+ * 
+ * Relationships:
+ * - Many MarketData -> One AssetType
+ * - One MarketData -> Many Assets
+ * - One MarketData -> Many News
+ * - One MarketData -> Many ESGRatings
+ * - One MarketData -> Many PriceHistory
  */
 @Entity
 @Table(name = "market_data",
@@ -112,13 +120,22 @@ public class MarketData {
     @Column(name = "updated_date")
     private LocalDateTime updatedDate;
 
-    // Relationships
+    // Relationships (prevent circular JSON serialization)
+    @JsonIgnore
     @OneToMany(mappedBy = "marketData", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Asset> assets = new ArrayList<>();
 
-    // TODO: Fix PriceHistory entity relationship
-    // @OneToMany(mappedBy = "marketData", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    // private List<PriceHistory> priceHistories = new ArrayList<>();
+    @JsonIgnore
+    @OneToMany(mappedBy = "marketData", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<News> news = new ArrayList<>();
+
+    @JsonIgnore
+    @OneToMany(mappedBy = "marketData", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<ESGRating> esgRatings = new ArrayList<>();
+
+    @JsonIgnore
+    @OneToMany(mappedBy = "marketData", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<PriceHistory> priceHistories = new ArrayList<>();
 
     // Lifecycle callbacks
     @PrePersist

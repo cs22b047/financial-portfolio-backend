@@ -9,6 +9,10 @@ import java.util.List;
 /**
  * AssetType entity matching the simplified asset_types table.
  * Reference data for asset classifications (STOCK, BOND, CRYPTO, etc.)
+ * 
+ * Relationships:
+ * - One AssetType -> Many MarketData
+ * - One AssetType -> Many Assets
  */
 @Entity
 @Table(name = "asset_types", 

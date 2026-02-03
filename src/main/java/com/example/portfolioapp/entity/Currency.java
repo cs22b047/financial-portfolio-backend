@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 /**
  * Reference table for currencies (ISO 4217).
  * Supports both fiat (USD, EUR) and crypto base currencies (BTC, ETH).
+ * Standalone reference table with no foreign key relationships.
  */
 @Entity
 @Table(name = "currencies")

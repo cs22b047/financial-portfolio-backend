@@ -7,6 +7,9 @@ import java.time.LocalDateTime;
 /**
  * Transaction entity matching the simplified transactions table.
  * Records all transaction activities (BUY, SELL, DIVIDEND, etc.)
+ * 
+ * Relationships:
+ * - Many Transactions -> One Asset
  */
 @Entity
 @Table(name = "transactions",

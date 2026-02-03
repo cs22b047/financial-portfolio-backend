@@ -145,7 +145,98 @@ Environmental, Social, and Governance (ESG) sustainability ratings for stocks.
 
 ---
 
-## 📊 Quick Reference
+## � News API
+**Base URL:** `/api/news`
+
+Access financial news articles related to stocks and market events.
+
+### Get News
+| Method | Endpoint | Description | Parameters |
+|--------|----------|-------------|------------|
+| GET | `/api/news` | Get all news | - |
+| GET | `/api/news/{id}` | Get news by ID | `id` (path) |
+| GET | `/api/news/symbol/{symbol}` | News for specific stock | `symbol` (path) |
+| GET | `/api/news/symbol/{symbol}/paged` | Paginated news by symbol | `symbol` (path), `page`, `size` (query) |
+| GET | `/api/news/market-data/{marketDataId}` | News by market data ID | `marketDataId` (path) |
+| GET | `/api/news/sentiment/{sentiment}` | Filter by sentiment | `sentiment` (path: positive, negative, neutral) |
+| GET | `/api/news/source/{source}` | Filter by news source | `source` (path) |
+| GET | `/api/news/unread` | Get all unread news | - |
+| GET | `/api/news/unread/{symbol}` | Unread news for symbol | `symbol` (path) |
+| GET | `/api/news/recent` | Recent news (last N days) | `days` (query, default=7) |
+| GET | `/api/news/recent/{symbol}` | Recent news for symbol | `symbol` (path), `days` (query) |
+| GET | `/api/news/date-range` | News by date range | `startDate`, `endDate` (query) |
+| GET | `/api/news/search` | Search news by keyword | `keyword` (query) |
+| GET | `/api/news/top` | Top/latest news | `limit` (query, default=10) |
+
+### News Management
+| Method | Endpoint | Description | Request Body |
+|--------|----------|-------------|--------------|
+| POST | `/api/news` | Create news article | `{ symbol, title, summary, link, source, sentiment }` |
+| PUT | `/api/news/{id}` | Update news article | `{ title, summary, sentiment, ... }` |
+| DELETE | `/api/news/{id}` | Delete news article | - |
+| DELETE | `/api/news/old` | Delete old news | `daysOld` (query, default=30) |
+
+### Read Status
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| PATCH | `/api/news/{id}/read` | Mark news as read |
+| PATCH | `/api/news/read-all/{symbol}` | Mark all news as read for symbol |
+
+### Analytics
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/news/count/{symbol}` | News count for symbol |
+| GET | `/api/news/unread-count` | Total unread news count |
+| GET | `/api/news/statistics` | News statistics (sentiment breakdown, sources) |
+| GET | `/api/news/sources` | List all news sources |
+| GET | `/api/news/symbols` | List symbols with news |
+
+---
+
+## ⚙️ User Settings API
+**Base URL:** `/api/user-settings`
+
+Manage user preferences and application settings.
+
+### Get Settings
+| Method | Endpoint | Description | Parameters |
+|--------|----------|-------------|------------|
+| GET | `/api/user-settings` | Get all user settings | - |
+| GET | `/api/user-settings/{id}` | Get settings by ID | `id` (path) |
+| GET | `/api/user-settings/user/{userName}` | Get settings by user name | `userName` (path) |
+| GET | `/api/user-settings/default` | Get/create default settings | - |
+| GET | `/api/user-settings/exists/{userName}` | Check if settings exist | `userName` (path) |
+| GET | `/api/user-settings/notifications-enabled` | Users with notifications on | - |
+| GET | `/api/user-settings/price-alerts-enabled` | Users with price alerts on | - |
+
+### Manage Settings
+| Method | Endpoint | Description | Request Body |
+|--------|----------|-------------|--------------|
+| POST | `/api/user-settings` | Create user settings | `{ userName, defaultCurrency, theme, ... }` |
+| PUT | `/api/user-settings/{id}` | Update settings by ID | `{ theme, timezone, ... }` |
+| PUT | `/api/user-settings/user/{userName}` | Update settings by user name | `{ theme, timezone, ... }` |
+| DELETE | `/api/user-settings/{id}` | Delete settings by ID | - |
+| DELETE | `/api/user-settings/user/{userName}` | Delete settings by user name | - |
+
+### Toggle Settings
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| PATCH | `/api/user-settings/{id}/toggle-notifications` | Toggle notifications on/off |
+| PATCH | `/api/user-settings/{id}/toggle-price-alerts` | Toggle price alerts on/off |
+| PATCH | `/api/user-settings/{id}/theme` | Change theme |
+
+**User Settings Structure:**
+- **defaultCurrency**: Default currency (USD, EUR, etc.)
+- **timezone**: User's timezone (UTC, America/New_York, etc.)
+- **dateFormat**: Preferred date format (yyyy-MM-dd)
+- **decimalPlaces**: Number of decimal places (default 2)
+- **theme**: UI theme (light, dark)
+- **notificationsEnabled**: Enable/disable notifications
+- **priceAlertsEnabled**: Enable/disable price alerts
+
+---
+
+## �📊 Quick Reference
 
 ### Common Query Parameters
 - **Date Range**: `startDate` and `endDate` in ISO format (YYYY-MM-DD)
@@ -181,7 +272,7 @@ Currently, all endpoints are open (CORS enabled for all origins).
 
 ---
 
-**Total Controllers**: 5  
-**Total Endpoints**: 55
+**Total Controllers**: 7  
+**Total Endpoints**: 96
 
 Last Updated: February 3, 2026

@@ -8,6 +8,9 @@ import java.time.LocalDateTime;
 /**
  * Historical price data (OHLCV) for market data.
  * Used for charting and historical portfolio value calculations.
+ * 
+ * Relationships:
+ * - Many PriceHistory -> One MarketData
  */
 @Entity
 @Table(name = "price_history",
