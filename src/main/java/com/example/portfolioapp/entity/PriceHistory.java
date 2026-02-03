@@ -6,15 +6,15 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * Historical price data (OHLCV) for instruments.
+ * Historical price data (OHLCV) for market data.
  * Used for charting and historical portfolio value calculations.
  */
 @Entity
 @Table(name = "price_history",
-       uniqueConstraints = @UniqueConstraint(columnNames = {"instrument_id", "price_date"}),
+       uniqueConstraints = @UniqueConstraint(columnNames = {"market_data_id", "price_date"}),
        indexes = {
            @Index(name = "idx_price_history_date", columnList = "price_date"),
-           @Index(name = "idx_price_history_instrument", columnList = "instrument_id")
+           @Index(name = "idx_price_history_market_data", columnList = "market_data_id")
        })
 public class PriceHistory {
 
@@ -23,8 +23,8 @@ public class PriceHistory {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "instrument_id", nullable = false)
-    private Instrument instrument;
+    @JoinColumn(name = "market_data_id", nullable = false)
+    private MarketData marketData;
 
     @Column(name = "price_date", nullable = false)
     private LocalDate priceDate;
@@ -57,16 +57,16 @@ public class PriceHistory {
         this.createdDate = LocalDateTime.now();
     }
 
-    public PriceHistory(Instrument instrument, LocalDate priceDate, BigDecimal closePrice) {
+    public PriceHistory(MarketData marketData, LocalDate priceDate, BigDecimal closePrice) {
         this();
-        this.instrument = instrument;
+        this.marketData = marketData;
         this.priceDate = priceDate;
         this.closePrice = closePrice;
     }
 
-    public PriceHistory(Instrument instrument, LocalDate priceDate,
+    public PriceHistory(MarketData marketData, LocalDate priceDate,
                         BigDecimal open, BigDecimal high, BigDecimal low, BigDecimal close, Long volume) {
-        this(instrument, priceDate, close);
+        this(marketData, priceDate, close);
         this.openPrice = open;
         this.highPrice = high;
         this.lowPrice = low;
@@ -77,8 +77,8 @@ public class PriceHistory {
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
-    public Instrument getInstrument() { return instrument; }
-    public void setInstrument(Instrument instrument) { this.instrument = instrument; }
+    public MarketData getMarketData() { return marketData; }
+    public void setMarketData(MarketData marketData) { this.marketData = marketData; }
 
     public LocalDate getPriceDate() { return priceDate; }
     public void setPriceDate(LocalDate priceDate) { this.priceDate = priceDate; }
@@ -126,7 +126,7 @@ public class PriceHistory {
 
     @Override
     public String toString() {
-        return "PriceHistory{instrumentId=" + (instrument != null ? instrument.getId() : null) +
+        return "PriceHistory{marketDataId=" + (marketData != null ? marketData.getId() : null) +
                ", date=" + priceDate + ", close=" + closePrice + "}";
     }
 }

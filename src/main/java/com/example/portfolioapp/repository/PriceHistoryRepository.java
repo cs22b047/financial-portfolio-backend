@@ -13,30 +13,30 @@ import java.util.Optional;
 @Repository
 public interface PriceHistoryRepository extends JpaRepository<PriceHistory, Long> {
 
-    @Query("SELECT p FROM PriceHistory p WHERE p.instrument.id = :instrumentId ORDER BY p.priceDate DESC")
-    List<PriceHistory> findByInstrumentId(@Param("instrumentId") Long instrumentId);
+    @Query("SELECT p FROM PriceHistory p WHERE p.marketData.id = :marketDataId ORDER BY p.priceDate DESC")
+    List<PriceHistory> findByMarketDataId(@Param("marketDataId") Long marketDataId);
 
-    @Query("SELECT p FROM PriceHistory p WHERE p.instrument.symbol = :symbol ORDER BY p.priceDate DESC")
+    @Query("SELECT p FROM PriceHistory p WHERE p.marketData.symbol = :symbol ORDER BY p.priceDate DESC")
     List<PriceHistory> findBySymbol(@Param("symbol") String symbol);
 
-    @Query("SELECT p FROM PriceHistory p WHERE p.instrument.id = :instrumentId AND p.priceDate BETWEEN :startDate AND :endDate ORDER BY p.priceDate ASC")
-    List<PriceHistory> findByInstrumentIdAndDateRange(@Param("instrumentId") Long instrumentId,
+    @Query("SELECT p FROM PriceHistory p WHERE p.marketData.id = :marketDataId AND p.priceDate BETWEEN :startDate AND :endDate ORDER BY p.priceDate ASC")
+    List<PriceHistory> findByMarketDataIdAndDateRange(@Param("marketDataId") Long marketDataId,
                                                        @Param("startDate") LocalDate startDate,
                                                        @Param("endDate") LocalDate endDate);
 
-    @Query("SELECT p FROM PriceHistory p WHERE p.instrument.symbol = :symbol AND p.priceDate BETWEEN :startDate AND :endDate ORDER BY p.priceDate ASC")
+    @Query("SELECT p FROM PriceHistory p WHERE p.marketData.symbol = :symbol AND p.priceDate BETWEEN :startDate AND :endDate ORDER BY p.priceDate ASC")
     List<PriceHistory> findBySymbolAndDateRange(@Param("symbol") String symbol,
                                                  @Param("startDate") LocalDate startDate,
                                                  @Param("endDate") LocalDate endDate);
 
-    @Query("SELECT p FROM PriceHistory p WHERE p.instrument.id = :instrumentId AND p.priceDate = :date")
-    Optional<PriceHistory> findByInstrumentIdAndDate(@Param("instrumentId") Long instrumentId, @Param("date") LocalDate date);
+    @Query("SELECT p FROM PriceHistory p WHERE p.marketData.id = :marketDataId AND p.priceDate = :date")
+    Optional<PriceHistory> findByMarketDataIdAndDate(@Param("marketDataId") Long marketDataId, @Param("date") LocalDate date);
 
-    @Query("SELECT p FROM PriceHistory p WHERE p.instrument.id = :instrumentId ORDER BY p.priceDate DESC LIMIT 1")
-    Optional<PriceHistory> findLatestByInstrumentId(@Param("instrumentId") Long instrumentId);
+    @Query("SELECT p FROM PriceHistory p WHERE p.marketData.id = :marketDataId ORDER BY p.priceDate DESC LIMIT 1")
+    Optional<PriceHistory> findLatestByMarketDataId(@Param("marketDataId") Long marketDataId);
 
-    @Query("SELECT MAX(p.priceDate) FROM PriceHistory p WHERE p.instrument.id = :instrumentId")
-    Optional<LocalDate> findLatestDateByInstrumentId(@Param("instrumentId") Long instrumentId);
+    @Query("SELECT MAX(p.priceDate) FROM PriceHistory p WHERE p.marketData.id = :marketDataId")
+    Optional<LocalDate> findLatestDateByMarketDataId(@Param("marketDataId") Long marketDataId);
 
-    boolean existsByInstrumentIdAndPriceDate(Long instrumentId, LocalDate priceDate);
+    boolean existsByMarketDataIdAndPriceDate(Long marketDataId, LocalDate priceDate);
 }

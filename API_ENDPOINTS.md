@@ -4,37 +4,36 @@ Complete list of all REST API endpoints for the Financial Portfolio Backend.
 
 ---
 
-## 📊 Positions API
-**Base URL:** `/api/positions`
+## 📊 Assets API
+**Base URL:** `/api/assets`
 
-Track your stock positions, watchlist, and execute buy/sell transactions.
+Track your stock holdings, watchlist, and execute buy/sell transactions.
 
-### Get Positions
+### Get Assets
 | Method | Endpoint | Description | Parameters |
 |--------|----------|-------------|------------|
-| GET | `/api/positions` | Get all positions | - |
-| GET | `/api/positions/open` | Get open (owned) positions | - |
-| GET | `/api/positions/watchlist` | Get watchlist positions | - |
-| GET | `/api/positions/{id}` | Get position by ID | `id` (path) |
-| GET | `/api/positions/symbol/{symbol}` | Get positions by stock symbol | `symbol` (path) |
-| GET | `/api/positions/type/{type}` | Get positions by instrument type | `type` (path) |
-| GET | `/api/positions/{id}/tax-lots` | Get all tax lots for position | `id` (path) |
-| GET | `/api/positions/{id}/tax-lots/open` | Get open tax lots for position | `id` (path) |
+| GET | `/api/assets` | Get all assets (all statuses) | - |
+| GET | `/api/assets/owned` | Get owned assets | - |
+| GET | `/api/assets/watchlist` | Get watchlist assets | - |
+| GET | `/api/assets/{id}` | Get asset by ID | `id` (path) |
+| GET | `/api/assets/symbol/{symbol}` | Get asset by stock symbol | `symbol` (path) |
+| GET | `/api/assets/status/{status}` | Get assets by status | `status` (path: OWNED, WATCHLIST, RESEARCH, SOLD) |
 
-### Manage Positions
+### Manage Assets
 | Method | Endpoint | Description | Request Body |
 |--------|----------|-------------|--------------|
-| POST | `/api/positions/buy` | Record stock purchase | `{ symbol, quantity, price, date }` |
-| POST | `/api/positions/sell` | Record stock sale | `{ positionId, quantity, price, date }` |
-| POST | `/api/positions/watchlist` | Add stock to watchlist | `{ symbol }` |
-| DELETE | `/api/positions/watchlist/{id}` | Remove from watchlist | - |
+| POST | `/api/assets/buy` | Record stock purchase | `{ symbol, quantity, price, date }` |
+| POST | `/api/assets/sell` | Record stock sale | `{ symbol, quantity, price, date }` |
+| POST | `/api/assets/watchlist` | Add stock to watchlist | `{ symbol, targetPrice }` |
+| DELETE | `/api/assets/watchlist/{id}` | Remove from watchlist | - |
+| PUT | `/api/assets/{id}` | Update asset settings | `{ targetPrice, notes, priorityRank, priceAlertsEnabled }` |
+| DELETE | `/api/assets/{id}` | Delete asset | - |
 
-### Update Position Settings
-| Method | Endpoint | Description | Request Body |
-|--------|----------|-------------|--------------|
-| PUT | `/api/positions/{id}/notes` | Update position notes | `{ notes }` |
-| PUT | `/api/positions/{id}/target-sell-price` | Set target sell price | `{ targetPrice }` |
-| PUT | `/api/positions/{id}/cost-basis-method` | Change cost basis method | `{ method }` |
+**Asset Statuses:**
+- **OWNED**: Currently owned stocks
+- **WATCHLIST**: Stocks being monitored
+- **RESEARCH**: Stocks under research
+- **SOLD**: Previously owned, now sold
 
 ---
 
@@ -98,24 +97,6 @@ Track dividend income from your stocks.
 
 ---
 
-## 🎵 Instruments API
-**Base URL:** `/api/instruments`
-
-Manage stock/asset metadata and information.
-
-| Method | Endpoint | Description | Parameters |
-|--------|----------|-------------|------------|
-| GET | `/api/instruments` | Get all instruments | - |
-| GET | `/api/instruments/{id}` | Get instrument by ID | `id` (path) |
-| GET | `/api/instruments/symbol/{symbol}` | Get instrument by symbol | `symbol` (path) |
-| GET | `/api/instruments/type/{type}` | Get by type (STOCK, ETF, BOND, etc.) | `type` (path) |
-| GET | `/api/instruments/search` | Search instruments | `query` (query param) |
-| POST | `/api/instruments` | Create new instrument | `{ symbol, name, type, ... }` |
-| PUT | `/api/instruments/{id}` | Update instrument | `{ name, type, ... }` |
-| DELETE | `/api/instruments/{id}` | Delete instrument | `id` (path) |
-
----
-
 ## 🌱 ESG Ratings API
 **Base URL:** `/api/esg-ratings`
 
@@ -164,37 +145,6 @@ Environmental, Social, and Governance (ESG) sustainability ratings for stocks.
 
 ---
 
-## 📁 Portfolio API
-**Base URL:** `/api/portfolio`
-
-Portfolio-level analytics, summaries, and performance metrics.
-
-### Summary & Overview
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/portfolio/summary` | Portfolio summary & metrics |
-
-### Allocation Analysis
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/portfolio/allocation/type` | Asset allocation by type |
-| GET | `/api/portfolio/allocation/sector` | Asset allocation by sector |
-
-### Performance Metrics
-| Method | Endpoint | Description | Parameters |
-|--------|----------|-------------|------------|
-| GET | `/api/portfolio/top-performers` | Top performing positions | `limit` (query, default=5) |
-| GET | `/api/portfolio/worst-performers` | Worst performing positions | `limit` (query, default=5) |
-| GET | `/api/portfolio/largest-positions` | Largest positions by value | `limit` (query, default=10) |
-
-### Realized Gains
-| Method | Endpoint | Description | Parameters |
-|--------|----------|-------------|------------|
-| GET | `/api/portfolio/realized-gains` | Realized gains summary | `startDate`, `endDate` (query) |
-| GET | `/api/portfolio/realized-gains/ytd` | Year-to-date realized gains | - |
-
----
-
 ## 📊 Quick Reference
 
 ### Common Query Parameters
@@ -215,7 +165,23 @@ Currently, all endpoints are open (CORS enabled for all origins).
 
 ---
 
-**Total Controllers**: 7  
-**Total Endpoints**: 78+
+## 📦 Database Schema
+
+**Core Tables (10):**
+1. **asset_types** - Asset type reference (STOCK, ETF, CRYPTO, BOND, CASH)
+2. **assets** - User's portfolio holdings and watchlist
+3. **currencies** - Currency reference data
+4. **dividends** - Dividend payment history
+5. **esg_ratings** - ESG sustainability ratings
+6. **market_data** - Real-time market prices and data
+7. **news** - Financial news articles
+8. **price_history** - Historical OHLCV price data
+9. **transactions** - Buy/sell transaction history
+10. **user_settings** - User preferences
+
+---
+
+**Total Controllers**: 5  
+**Total Endpoints**: 55
 
 Last Updated: February 3, 2026
