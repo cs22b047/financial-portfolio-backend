@@ -35,3 +35,4 @@ build/
 ### Security ###
 **/application-local.properties
 **/application-dev.properties
+/architecture
