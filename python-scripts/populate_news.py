@@ -1,17 +1,32 @@
 """
-News Data Populator for Portfolio Database
-==========================================
-Fetches company news and populates the database news table.
-Uses stocks from market_data table.
+Company News Populator - Finnhub API
+====================================
+Standalone script to extract company news from Finnhub API and insert into MySQL database.
+
+Data Sources:
+- Finnhub API (API key required)
+- Groq LLM (optional, for AI-generated summaries when Finnhub summary is empty)
+
+Output:
+- Direct insertion into MySQL portfolio_db.news table
+
+Setup:
+    1. Install dependencies:
+       pip install requests mysql-connector-python groq
+
+    2. Configure Finnhub API key in this script or .env file:
+       FINNHUB_API_KEY=your_api_key_here
+
+Usage:
+    python populate_news.py
 """
 
-import yfinance as yf
+import requests
 import mysql.connector
-from mysql.connector import Error
-import os
 from datetime import datetime, timedelta
+import os
 import time
-from typing import List, Dict, Optional
+from typing import List, Dict
 
 try:
     from dotenv import load_dotenv
@@ -24,80 +39,117 @@ try:
     GROQ_AVAILABLE = True
 except ImportError:
     GROQ_AVAILABLE = False
-    print("Note: groq library not installed. AI summaries will be disabled.")
+    print("Warning: groq library not installed. AI summaries will be disabled.")
+    print("Install with: pip install groq")
+
+
+# =============================================================================
+# CONFIGURATION
+# =============================================================================
 
 # Database configuration
 DB_CONFIG = {
-    'host': os.getenv('DB_HOST', 'localhost'),
-    'user': os.getenv('DB_USER', 'root'),
-    'password': os.getenv('DB_PASSWORD', ''),
-    'database': os.getenv('DB_NAME', 'portfolio_db')
+    'host': 'localhost',
+    'user': 'root',
+    'password': 'root351973',
+    'database': 'portfolio_db',
+    'port': 3306
 }
 
-# Groq configuration for AI summaries
+# Companies to extract news for
+COMPANIES = [
+    "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA", "BRK-B", "UNH", "JNJ",
+    "V", "XOM", "JPM", "WMT", "MA", "PG", "HD", "CVX", "MRK", "ABBV",
+    "LLY", "PEP", "KO", "COST", "AVGO", "PFE", "TMO", "MCD", "CSCO", "ACN",
+    "CRM", "ABT", "DHR", "NKE", "ORCL", "TXN", "NFLX", "AMD", "INTC", "DIS"
+]
+
+# Finnhub API key (required - set in .env file)
+FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY")
+
+# Groq API key (for AI summaries - set in .env file)
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+# LLM Model for summaries
 GROQ_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 
-class NewsPopulator:
-    def __init__(self):
-        self.connection = None
+
+# =============================================================================
+# NEWS EXTRACTOR CLASS
+# =============================================================================
+
+class NewsExtractor:
+    """Extract news articles for companies from multiple sources."""
+    
+    def __init__(self, tickers: List[str]):
+        self.tickers = tickers
+        self.finnhub_key = FINNHUB_API_KEY
+        self.groq_key = GROQ_API_KEY
+        self.db_connection = None
+        self.db_cursor = None
+        
+        # Initialize Groq client for AI summaries
         self.groq_client = None
-        
-        # Initialize Groq for AI summaries
-        if GROQ_AVAILABLE and GROQ_API_KEY:
+        if GROQ_AVAILABLE and self.groq_key:
             try:
-                self.groq_client = Groq(api_key=GROQ_API_KEY)
-                print("✓ Groq AI enabled for summaries")
+                self.groq_client = Groq(api_key=self.groq_key)
             except Exception as e:
-                print(f"⚠ Groq initialization failed: {e}")
+                print(f"Warning: Failed to initialize Groq client: {e}")
         
-    def connect(self):
-        """Establish database connection."""
+        # Connect to database
         try:
-            self.connection = mysql.connector.connect(**DB_CONFIG)
-            if self.connection.is_connected():
-                print(f"✓ Connected to MySQL database: {DB_CONFIG['database']}")
-                return True
-        except Error as e:
+            self.db_connection = mysql.connector.connect(**DB_CONFIG)
+            self.db_cursor = self.db_connection.cursor()
+            print(f"✓ Connected to MySQL database: {DB_CONFIG['database']}")
+        except Exception as e:
             print(f"✗ Database connection failed: {e}")
-            return False
+            raise
+        
+        print("\n" + "=" * 70)
+        print("NEWS DATA POPULATOR - Finnhub API")
+        print("=" * 70)
+        print(f"\nConfiguration:")
+        print(f"  Companies to track: {len(self.tickers)}")
+        print(f"  Database:           {DB_CONFIG['database']} @ {DB_CONFIG['host']}")
+        print(f"  Finnhub API:        {'✓ Configured' if self.finnhub_key else '✗ Missing API key'}")
+        print(f"  Groq LLM:           {'✓ Ready (' + GROQ_MODEL + ')' if self.groq_client else '✗ Disabled'}")
+        print()
     
-    def close(self):
-        """Close database connection."""
-        if self.connection and self.connection.is_connected():
-            self.connection.close()
-            print("✓ Database connection closed")
-    
-    def get_stocks_from_db(self) -> List[Dict]:
-        """Fetch all stocks from market_data table."""
-        try:
-            cursor = self.connection.cursor(dictionary=True)
-            cursor.execute("SELECT id, symbol, name FROM market_data ORDER BY symbol")
-            stocks = cursor.fetchall()
-            cursor.close()
-            return stocks
-        except Error as e:
-            print(f"✗ Failed to fetch stocks: {e}")
-            return []
+    # =========================================================================
+    # AI SUMMARY GENERATION
+    # =========================================================================
     
     def generate_ai_summary(self, title: str, ticker: str) -> str:
-        """Generate AI summary for news headline."""
+        """
+        Generate a brief summary of a news article using Groq LLM.
+        
+        Args:
+            title: The news article title
+            ticker: The stock ticker symbol
+            
+        Returns:
+            AI-generated summary (2-3 sentences)
+        """
         if not self.groq_client:
             return ""
         
         try:
-            prompt = f"""You are a financial news analyst. Generate a brief summary (2-3 sentences) for this news headline about {ticker}:
+            prompt = f"""You are a financial news analyst. Generate a brief, informative summary (2-3 sentences) for this news headline about {ticker}:
 
 Headline: {title}
 
-Summary should be concise, professional, and focus on key financial impact.
+Summary should:
+- Be concise and professional
+- Focus on the key financial impact or business development
+- Be 2-3 sentences maximum
+- Avoid speculation
 
 Summary:"""
 
             response = self.groq_client.chat.completions.create(
                 model=GROQ_MODEL,
                 messages=[
-                    {"role": "system", "content": "You are a financial news analyst."},
+                    {"role": "system", "content": "You are a financial news analyst providing brief, accurate summaries."},
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.3,
@@ -105,167 +157,208 @@ Summary:"""
                 top_p=0.9
             )
             
-            return response.choices[0].message.content.strip()
+            summary = response.choices[0].message.content.strip()
+            return summary
             
         except Exception as e:
+            print(f"    ⚠ AI summary failed: {str(e)[:50]}")
             return ""
     
-    def fetch_yahoo_news(self, ticker: str) -> List[Dict]:
-        """Fetch news from Yahoo Finance."""
+    # =========================================================================
+    # FINNHUB NEWS EXTRACTION
+    # =========================================================================
+    
+    def extract_finnhub_news(self, ticker: str) -> List[Dict]:
+        """
+        Extract news from Finnhub API.
+        Returns list of news articles with summaries (uses AI if empty).
+        """
+        if not self.finnhub_key:
+            return []
+        
         try:
-            stock = yf.Ticker(ticker)
-            news = stock.news
+            # Get news from past 7 days
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=7)
             
-            if not news:
+            url = "https://finnhub.io/api/v1/company-news"
+            params = {
+                "symbol": ticker,
+                "from": start_date.strftime("%Y-%m-%d"),
+                "to": end_date.strftime("%Y-%m-%d"),
+                "token": self.finnhub_key
+            }
+            
+            response = requests.get(url, params=params, timeout=10)
+            response.raise_for_status()
+            news_data = response.json()
+            
+            if not news_data:
                 return []
             
             articles = []
-            for article in news[:10]:  # Limit to 10 most recent
-                title = article.get("title", "")
+            for article in news_data[:20]:  # Limit to 20 most recent
+                summary = article.get("summary", "")
+                title = article.get("headline", "")
                 
-                # Generate AI summary
-                summary = ""
-                if self.groq_client and title:
+                # Generate AI summary if Finnhub summary is empty
+                if not summary and self.groq_client and title:
                     summary = self.generate_ai_summary(title, ticker)
-                    time.sleep(0.2)  # Rate limit
-                
-                # Format timestamp
-                published_ts = article.get("providerPublishTime")
-                published_date = None
-                if published_ts:
-                    published_date = datetime.fromtimestamp(published_ts)
+                    time.sleep(0.2)  # Rate limit for Groq API
                 
                 articles.append({
                     "ticker": ticker,
+                    "source_api": "Finnhub",
                     "title": title,
+                    "publisher": article.get("source", ""),
+                    "link": article.get("url", ""),
+                    "published_date": article.get("datetime", ""),
                     "summary": summary,
-                    "link": article.get("link", ""),
-                    "image_url": article.get("thumbnail", {}).get("resolutions", [{}])[0].get("url", "") if article.get("thumbnail") else "",
-                    "source": "Yahoo Finance",
-                    "publisher": article.get("publisher", ""),
-                    "published_date": published_date
+                    "image_url": article.get("image", ""),
                 })
             
             return articles
             
         except Exception as e:
-            print(f"  ⚠ Yahoo error for {ticker}: {str(e)[:50]}")
+            print(f"  ⚠ Finnhub error for {ticker}: {str(e)}")
             return []
     
-    def insert_news(self, market_data_id: int, ticker: str, article: Dict) -> bool:
-        """Insert news article into database."""
+    # =========================================================================
+    # HELPER METHODS
+    # =========================================================================
+    
+    def _format_timestamp(self, timestamp) -> str:
+        """Convert Unix timestamp to readable date string."""
+        if not timestamp:
+            return None
         try:
-            cursor = self.connection.cursor()
-            
+            if isinstance(timestamp, (int, float)):
+                return datetime.fromtimestamp(timestamp)
+            return datetime.strptime(str(timestamp), "%Y-%m-%d %H:%M:%S")
+        except:
+            return None
+    
+    def _insert_article(self, article: Dict) -> bool:
+        """Insert a news article into the database."""
+        try:
             # Check if article already exists (by link)
-            if article['link']:
-                cursor.execute("SELECT id FROM news WHERE link = %s", (article['link'],))
-                if cursor.fetchone():
-                    cursor.close()
-                    return False  # Already exists
+            if article.get('link'):
+                self.db_cursor.execute(
+                    "SELECT id FROM news WHERE link = %s",
+                    (article['link'],)
+                )
+                if self.db_cursor.fetchone():
+                    return False  # Duplicate
             
             # Insert new article
-            sql = """
-                INSERT INTO news (
-                    market_data_id, symbol, title, summary, link,
-                    image_url, source, publisher, published_date,
-                    is_read, created_date
-                ) VALUES (
-                    %s, %s, %s, %s, %s,
-                    %s, %s, %s, %s,
-                    0, NOW()
-                )
+            insert_query = """
+                INSERT INTO news (symbol, title, summary, publisher, link, 
+                                published_date, source, image_url, created_date)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
             """
             
             values = (
-                market_data_id,
-                ticker,
-                article['title'][:500],  # Truncate to fit varchar(500)
-                article['summary'],
-                article['link'][:1000] if article['link'] else None,
-                article['image_url'][:1000] if article['image_url'] else None,
-                article['source'],
-                article['publisher'][:200] if article['publisher'] else None,
-                article['published_date']
+                article.get('ticker', ''),
+                article.get('title', ''),
+                article.get('summary', ''),
+                article.get('publisher', ''),
+                article.get('link', ''),
+                self._format_timestamp(article.get('published_date')),
+                article.get('source_api', ''),
+                article.get('image_url', '')
             )
             
-            cursor.execute(sql, values)
-            self.connection.commit()
-            cursor.close()
+            self.db_cursor.execute(insert_query, values)
+            self.db_connection.commit()
             return True
             
-        except Error as e:
-            # Ignore duplicate key errors
-            if e.errno != 1062:  # Duplicate entry
-                print(f"  ⚠ Insert failed: {str(e)[:50]}")
+        except Exception as e:
+            print(f"    ✗ Insert failed: {str(e)[:50]}")
             return False
     
-    def populate_all_news(self):
-        """Main function to populate news for all stocks."""
-        print("\n" + "=" * 80)
-        print("NEWS DATA POPULATOR - Portfolio Management System")
-        print("=" * 80)
-        
-        # Get stocks from database
-        stocks = self.get_stocks_from_db()
-        if not stocks:
-            print("✗ No stocks found in market_data table")
-            return
-        
-        print(f"\nFetching news for {len(stocks)} stocks from Yahoo Finance...")
-        if self.groq_client:
-            print("✓ AI summaries enabled")
-        print("-" * 80)
-        
-        total_articles = 0
+    # =========================================================================
+    # MAIN EXTRACTION
+    # =========================================================================
+    
+    def extract_all_news(self):
+        """Extract news from all sources for all tickers."""
         total_inserted = 0
+        total_duplicates = 0
         
-        for i, stock in enumerate(stocks, 1):
-            ticker = stock['symbol']
-            market_data_id = stock['id']
+        print(f"Starting news extraction for {len(self.tickers)} companies...")
+        print("-" * 70)
+        
+        for i, ticker in enumerate(self.tickers, 1):
+            print(f"[{i}/{len(self.tickers)}] {ticker:6} ...", end=" ")
             
-            print(f"[{i}/{len(stocks)}] {ticker:6s}...", end=" ")
+            ticker_inserted = 0
+            ticker_duplicates = 0
             
-            # Fetch news
-            articles = self.fetch_yahoo_news(ticker)
-            
-            if not articles:
-                print("No news")
+            # Extract Finnhub news
+            if self.finnhub_key:
+                finnhub_articles = self.extract_finnhub_news(ticker)
+                for article in finnhub_articles:
+                    if self._insert_article(article):
+                        ticker_inserted += 1
+                    else:
+                        ticker_duplicates += 1
+                time.sleep(1.2)  # Rate limit: 60 calls/minute for free tier
+            else:
+                print("✗ No API key")
                 continue
             
-            # Insert articles
-            inserted = 0
-            for article in articles:
-                if self.insert_news(market_data_id, ticker, article):
-                    inserted += 1
+            total_inserted += ticker_inserted
+            total_duplicates += ticker_duplicates
             
-            total_articles += len(articles)
-            total_inserted += inserted
-            
-            print(f"✓ {inserted}/{len(articles)} articles inserted")
-            
-            # Rate limit
-            time.sleep(0.5)
+            if ticker_inserted > 0:
+                print(f"✓ {ticker_inserted} inserted")
+            else:
+                print("No new articles")
         
-        print("-" * 80)
-        print(f"\n✓ News population complete!")
-        print(f"  Total articles fetched: {total_articles}")
-        print(f"  New articles inserted:  {total_inserted}")
-        print(f"  Duplicates skipped:     {total_articles - total_inserted}")
-        print("=" * 80 + "\n")
+        print("-" * 70)
+        print(f"\n✓ News extraction complete!")
+        print(f"  Total articles inserted:  {total_inserted}")
+        print(f"  Duplicates skipped:       {total_duplicates}")
+        print("=" * 70)
+        
+        return total_inserted, total_duplicates
+    
+    def close(self):
+        """Close database connection."""
+        if self.db_cursor:
+            self.db_cursor.close()
+        if self.db_connection:
+            self.db_connection.close()
+            print("✓ Database connection closed")
+
+
+# =============================================================================
+# MAIN EXECUTION
+# =============================================================================
 
 def main():
-    """Main execution."""
-    populator = NewsPopulator()
+    """Main execution function."""
     
-    if not populator.connect():
-        print("Failed to connect to database. Check your configuration.")
-        return
-    
+    extractor = None
     try:
-        populator.populate_all_news()
+        # Initialize extractor
+        extractor = NewsExtractor(tickers=COMPANIES)
+        
+        # Extract and insert all news
+        total_inserted, total_duplicates = extractor.extract_all_news()
+        
+        print(f"\nFinal Summary:")
+        print(f"  New articles added:     {total_inserted}")
+        print(f"  Duplicates skipped:     {total_duplicates}")
+        print(f"  Total processed:        {total_inserted + total_duplicates}")
+        print()
+        
+    except Exception as e:
+        print(f"\n✗ Error: {e}")
     finally:
-        populator.close()
+        if extractor:
+            extractor.close()
+
 
 if __name__ == "__main__":
     main()
