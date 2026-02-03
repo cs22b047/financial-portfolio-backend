@@ -8,54 +8,72 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
+/**
+ * REST Controller for Transaction operations
+ */
 @RestController
 @RequestMapping("/api/transactions")
-@CrossOrigin(origins = "*")
 public class TransactionController {
-    
+
     @Autowired
     private TransactionService transactionService;
-    
-    @GetMapping
-    public List<Transaction> getAllTransactions() {
-        return transactionService.getAllTransactions();
+
+    /**
+     * Get transactions by symbol
+     */
+    @GetMapping("/symbol/{symbol}")
+    public ResponseEntity<List<Transaction>> getTransactionsBySymbol(@PathVariable String symbol) {
+        return ResponseEntity.ok(transactionService.getTransactionsBySymbol(symbol));
     }
-    
-    @GetMapping("/{id}")
-    public ResponseEntity<Transaction> getTransactionById(@PathVariable Long id) {
-        return transactionService.getTransactionById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+
+    /**
+     * Get transactions by type
+     */
+    @GetMapping("/type/{type}")
+    public ResponseEntity<List<Transaction>> getTransactionsByType(@PathVariable TransactionType type) {
+        return ResponseEntity.ok(transactionService.getTransactionsByType(type));
     }
-    
-    @GetMapping("/asset/{assetId}")
-    public List<Transaction> getTransactionsByAsset(@PathVariable Long assetId) {
-        return transactionService.getTransactionsByAsset(assetId);
-    }
-    
-    @GetMapping("/type/{transactionType}")
-    public List<Transaction> getTransactionsByType(@PathVariable TransactionType transactionType) {
-        return transactionService.getTransactionsByType(transactionType);
-    }
-    
+
+    /**
+     * Get transactions by date range
+     */
     @GetMapping("/date-range")
-    public List<Transaction> getTransactionsByDateRange(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        return transactionService.getTransactionsByDateRange(startDate, endDate);
+    public ResponseEntity<List<Transaction>> getTransactionsByDateRange(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        // Validate required parameters
+        if (startDate == null || endDate == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        
+        return ResponseEntity.ok(transactionService.getTransactionsByDateRange(startDate, endDate));
     }
-    
-    @PostMapping
-    public Transaction createTransaction(@RequestBody Transaction transaction) {
-        return transactionService.saveTransaction(transaction);
+
+    /**
+     * Get all transactions
+     */
+    @GetMapping
+    public ResponseEntity<List<Transaction>> getAllTransactions() {
+        return ResponseEntity.ok(transactionService.getAllTransactions());
     }
-    
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteTransaction(@PathVariable Long id) {
-        transactionService.deleteTransaction(id);
-        return ResponseEntity.ok().build();
+
+    /**
+     * Get total invested
+     */
+    @GetMapping("/total-invested")
+    public ResponseEntity<BigDecimal> getTotalInvested() {
+        return ResponseEntity.ok(transactionService.calculateTotalInvested());
+    }
+
+    /**
+     * Get realized gains
+     */
+    @GetMapping("/realized-gains")
+    public ResponseEntity<BigDecimal> getRealizedGains() {
+        return ResponseEntity.ok(transactionService.calculateRealizedGains());
     }
 }

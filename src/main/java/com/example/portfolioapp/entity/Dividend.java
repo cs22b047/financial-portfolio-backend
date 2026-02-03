@@ -2,260 +2,270 @@ package com.example.portfolioapp.entity;
 
 import jakarta.persistence.*;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+/**
+ * Dividend entity matching the simplified dividends table.
+ * 
+ * CRITICAL CALCULATION LOGIC:
+ * ✅ shares_held - Retrieved from assets.quantity (not from API)
+ * ✅ total_amount - Calculated as amount_per_share × shares_held
+ * 
+ * Yahoo Finance API only provides:
+ * - payment_date (Date)
+ * - amount_per_share (Dividend per share)
+ * 
+ * This entity implements the same calculation logic as the Python script.
+ */
 @Entity
-@Table(name = "dividends")
+@Table(name = "dividends",
+       uniqueConstraints = @UniqueConstraint(
+           name = "uk_dividend_asset_payment", 
+           columnNames = {"asset_id", "payment_date"}
+       ),
+       indexes = {
+           @Index(name = "idx_dividend_asset", columnList = "asset_id"),
+           @Index(name = "idx_dividend_payment_date", columnList = "payment_date")
+       })
 public class Dividend {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "asset_id", nullable = false)
     private Asset asset;
-    
-    @Enumerated(EnumType.STRING)
-    @Column(name = "dividend_type", nullable = false)
-    private DividendType dividendType;
-    
+
     @Column(name = "payment_date", nullable = false)
     private LocalDate paymentDate;
-    
-    @Column(name = "ex_dividend_date")
-    private LocalDate exDividendDate;
-    
-    @Column(name = "record_date")
-    private LocalDate recordDate;
-    
-    @Column(name = "declaration_date")
-    private LocalDate declarationDate;
-    
-    @Column(name = "amount_per_share", precision = 8, scale = 4, nullable = false)
+
+    @Column(name = "amount_per_share", nullable = false, precision = 15, scale = 8)
     private BigDecimal amountPerShare;
-    
-    @Column(name = "shares_held", precision = 15, scale = 4, nullable = false)
+
+    /**
+     * shares_held: Retrieved from assets.quantity at the time of dividend recording.
+     * This is NOT from the Yahoo Finance API.
+     */
+    @Column(name = "shares_held", precision = 15, scale = 8)
     private BigDecimal sharesHeld;
-    
-    @Column(name = "total_amount", precision = 12, scale = 2, nullable = false)
+
+    /**
+     * total_amount: Calculated as amount_per_share × shares_held.
+     * This is NOT from the Yahoo Finance API.
+     */
+    @Column(name = "total_amount", precision = 15, scale = 4)
     private BigDecimal totalAmount;
-    
-    @Column(name = "tax_withheld", precision = 8, scale = 2)
-    private BigDecimal taxWithheld;
-    
-    @Column(length = 3)
-    private String currency;
-    
-    @Column(columnDefinition = "TEXT")
-    private String notes;
-    
-    // Stock-specific dividend fields
-    @Column(name = "dividend_yield", precision = 5, scale = 2)
-    private BigDecimal dividendYield;
-    
-    @Column(name = "is_special_dividend")
-    private Boolean isSpecialDividend = false;
-    
-    @Column(name = "is_qualified")
-    private Boolean isQualified = true;
-    
-    // Bond-specific income fields
-    @Column(name = "coupon_rate", precision = 5, scale = 2)
-    private BigDecimal couponRate;
-    
-    @Column(name = "accrued_interest", precision = 8, scale = 2)
-    private BigDecimal accruedInterest;
-    
-    @Column(name = "face_value", precision = 15, scale = 2)
-    private BigDecimal faceValue;
-    
-    // Cash-specific interest fields
-    @Column(name = "interest_rate", precision = 5, scale = 2)
-    private BigDecimal interestRate;
-    
-    @Column(name = "compounding_frequency")
-    private Integer compoundingFrequency;
-    
-    @Column(name = "account_balance", precision = 15, scale = 2)
-    private BigDecimal accountBalance;
-    
-    // Crypto-specific reward fields
-    @Column(name = "staking_apy", precision = 5, scale = 2)
-    private BigDecimal stakingApy;
-    
-    @Column(name = "validator_fee", precision = 5, scale = 2)
-    private BigDecimal validatorFee;
-    
-    @Column(name = "staked_amount", precision = 15, scale = 8)
-    private BigDecimal stakedAmount;
-    
-    @Column(name = "reward_period_days")
-    private Integer rewardPeriodDays;
-    
-    @Column(name = "blockchain_network", length = 50)
-    private String blockchainNetwork;
-    
-    @Column(name = "transaction_hash", length = 100)
-    private String transactionHash;
-    
-    @Column(name = "created_date")
-    private LocalDateTime createdDate;
-    
-    @Column(name = "updated_date")
-    private LocalDateTime updatedDate;
-    
-    // Constructors
-    public Dividend() {
-        this.createdDate = LocalDateTime.now();
-        this.updatedDate = LocalDateTime.now();
+
+    @Column(name = "currency", length = 10)
+    private String currency = "USD";
+
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+
+    // Lifecycle callback
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
     }
-    
-    public Dividend(Asset asset, DividendType dividendType, LocalDate paymentDate, 
-                   BigDecimal amountPerShare, BigDecimal sharesHeld, BigDecimal totalAmount) {
-        this();
+
+    // Constructors
+    public Dividend() {}
+
+    public Dividend(Asset asset, LocalDate paymentDate, BigDecimal amountPerShare) {
         this.asset = asset;
-        this.dividendType = dividendType;
         this.paymentDate = paymentDate;
         this.amountPerShare = amountPerShare;
+    }
+
+    // Business logic methods
+    
+    /**
+     * Calculate total dividend amount based on shares held.
+     * This implements the core calculation logic: total = amount_per_share × shares_held
+     * 
+     * CRITICAL: This method must be called before saving the dividend to ensure
+     * sharesHeld and totalAmount are properly set.
+     * 
+     * @param sharesHeldAtPayment The number of shares the user held at payment date
+     */
+    public void calculateTotalAmount(BigDecimal sharesHeldAtPayment) {
+        if (sharesHeldAtPayment == null || amountPerShare == null) {
+            throw new IllegalStateException("Cannot calculate total amount: sharesHeld or amountPerShare is null");
+        }
+        
+        this.sharesHeld = sharesHeldAtPayment;
+        this.totalAmount = amountPerShare.multiply(sharesHeld)
+                                        .setScale(4, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * Automatically calculate total amount from the asset's current quantity.
+     * Assumes the asset's quantity represents the shares held at payment date.
+     */
+    public void calculateTotalAmountFromAsset() {
+        if (asset == null) {
+            throw new IllegalStateException("Cannot calculate total amount: asset is null");
+        }
+        
+        BigDecimal assetQuantity = asset.getQuantity();
+        if (assetQuantity == null) {
+            throw new IllegalStateException(
+                "Cannot calculate total amount: asset.quantity is null. " +
+                "Ensure the asset has a valid quantity before recording dividends."
+            );
+        }
+        
+        calculateTotalAmount(assetQuantity);
+    }
+
+    /**
+     * Validate that the dividend has been properly calculated before saving.
+     * This ensures data integrity.
+     */
+    public void validate() {
+        if (sharesHeld == null || totalAmount == null) {
+            throw new IllegalStateException(
+                "Dividend must be calculated before saving. " +
+                "Call calculateTotalAmount() or calculateTotalAmountFromAsset() first."
+            );
+        }
+        
+        if (amountPerShare == null || amountPerShare.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("amount_per_share must be greater than zero");
+        }
+        
+        if (sharesHeld.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("shares_held must be greater than zero");
+        }
+    }
+
+    /**
+     * Static factory method to create a properly calculated dividend.
+     * This is the recommended way to create dividend instances.
+     * 
+     * @param asset The asset receiving the dividend
+     * @param paymentDate The dividend payment date
+     * @param amountPerShare The dividend amount per share (from Yahoo Finance)
+     * @return A fully calculated Dividend instance ready to save
+     */
+    public static Dividend create(Asset asset, LocalDate paymentDate, BigDecimal amountPerShare) {
+        if (!asset.isOwned()) {
+            throw new IllegalArgumentException(
+                "Cannot create dividend for non-owned asset. Status: " + asset.getStatus()
+            );
+        }
+        
+        Dividend dividend = new Dividend(asset, paymentDate, amountPerShare);
+        dividend.setCurrency(asset.getMarketData().getCurrency());
+        dividend.calculateTotalAmountFromAsset();
+        dividend.validate();
+        
+        return dividend;
+    }
+
+    /**
+     * Get the annualized dividend estimate (assuming quarterly payments).
+     * This is a convenience method for analysis.
+     */
+    public BigDecimal getEstimatedAnnualDividend() {
+        if (amountPerShare == null) {
+            return BigDecimal.ZERO;
+        }
+        // Assume quarterly dividends (4 per year)
+        return amountPerShare.multiply(BigDecimal.valueOf(4));
+    }
+
+    // Getters and Setters
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public Asset getAsset() {
+        return asset;
+    }
+
+    public void setAsset(Asset asset) {
+        this.asset = asset;
+    }
+
+    public LocalDate getPaymentDate() {
+        return paymentDate;
+    }
+
+    public void setPaymentDate(LocalDate paymentDate) {
+        this.paymentDate = paymentDate;
+    }
+
+    public BigDecimal getAmountPerShare() {
+        return amountPerShare;
+    }
+
+    public void setAmountPerShare(BigDecimal amountPerShare) {
+        this.amountPerShare = amountPerShare;
+    }
+
+    public BigDecimal getSharesHeld() {
+        return sharesHeld;
+    }
+
+    public void setSharesHeld(BigDecimal sharesHeld) {
         this.sharesHeld = sharesHeld;
+    }
+
+    public BigDecimal getTotalAmount() {
+        return totalAmount;
+    }
+
+    public void setTotalAmount(BigDecimal totalAmount) {
         this.totalAmount = totalAmount;
     }
-    
-    // Getters and Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    
-    public Asset getAsset() { return asset; }
-    public void setAsset(Asset asset) { this.asset = asset; }
-    
-    public DividendType getDividendType() { return dividendType; }
-    public void setDividendType(DividendType dividendType) { this.dividendType = dividendType; }
-    
-    public LocalDate getPaymentDate() { return paymentDate; }
-    public void setPaymentDate(LocalDate paymentDate) { this.paymentDate = paymentDate; }
-    
-    public LocalDate getExDividendDate() { return exDividendDate; }
-    public void setExDividendDate(LocalDate exDividendDate) { this.exDividendDate = exDividendDate; }
-    
-    public LocalDate getRecordDate() { return recordDate; }
-    public void setRecordDate(LocalDate recordDate) { this.recordDate = recordDate; }
-    
-    public LocalDate getDeclarationDate() { return declarationDate; }
-    public void setDeclarationDate(LocalDate declarationDate) { this.declarationDate = declarationDate; }
-    
-    public BigDecimal getAmountPerShare() { return amountPerShare; }
-    public void setAmountPerShare(BigDecimal amountPerShare) { this.amountPerShare = amountPerShare; }
-    
-    public BigDecimal getSharesHeld() { return sharesHeld; }
-    public void setSharesHeld(BigDecimal sharesHeld) { this.sharesHeld = sharesHeld; }
-    
-    public BigDecimal getTotalAmount() { return totalAmount; }
-    public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
-    
-    public BigDecimal getTaxWithheld() { return taxWithheld; }
-    public void setTaxWithheld(BigDecimal taxWithheld) { this.taxWithheld = taxWithheld; }
-    
-    public String getCurrency() { return currency; }
-    public void setCurrency(String currency) { this.currency = currency; }
-    
-    public String getNotes() { return notes; }
-    public void setNotes(String notes) { this.notes = notes; }
-    
-    // Stock-specific getters/setters
-    public BigDecimal getDividendYield() { return dividendYield; }
-    public void setDividendYield(BigDecimal dividendYield) { this.dividendYield = dividendYield; }
-    
-    public Boolean getIsSpecialDividend() { return isSpecialDividend; }
-    public void setIsSpecialDividend(Boolean isSpecialDividend) { this.isSpecialDividend = isSpecialDividend; }
-    
-    public Boolean getIsQualified() { return isQualified; }
-    public void setIsQualified(Boolean isQualified) { this.isQualified = isQualified; }
-    
-    // Bond-specific getters/setters
-    public BigDecimal getCouponRate() { return couponRate; }
-    public void setCouponRate(BigDecimal couponRate) { this.couponRate = couponRate; }
-    
-    public BigDecimal getAccruedInterest() { return accruedInterest; }
-    public void setAccruedInterest(BigDecimal accruedInterest) { this.accruedInterest = accruedInterest; }
-    
-    public BigDecimal getFaceValue() { return faceValue; }
-    public void setFaceValue(BigDecimal faceValue) { this.faceValue = faceValue; }
-    
-    // Cash-specific getters/setters
-    public BigDecimal getInterestRate() { return interestRate; }
-    public void setInterestRate(BigDecimal interestRate) { this.interestRate = interestRate; }
-    
-    public Integer getCompoundingFrequency() { return compoundingFrequency; }
-    public void setCompoundingFrequency(Integer compoundingFrequency) { this.compoundingFrequency = compoundingFrequency; }
-    
-    public BigDecimal getAccountBalance() { return accountBalance; }
-    public void setAccountBalance(BigDecimal accountBalance) { this.accountBalance = accountBalance; }
-    
-    // Crypto-specific getters/setters
-    public BigDecimal getStakingApy() { return stakingApy; }
-    public void setStakingApy(BigDecimal stakingApy) { this.stakingApy = stakingApy; }
-    
-    public BigDecimal getValidatorFee() { return validatorFee; }
-    public void setValidatorFee(BigDecimal validatorFee) { this.validatorFee = validatorFee; }
-    
-    public BigDecimal getStakedAmount() { return stakedAmount; }
-    public void setStakedAmount(BigDecimal stakedAmount) { this.stakedAmount = stakedAmount; }
-    
-    public Integer getRewardPeriodDays() { return rewardPeriodDays; }
-    public void setRewardPeriodDays(Integer rewardPeriodDays) { this.rewardPeriodDays = rewardPeriodDays; }
-    
-    public String getBlockchainNetwork() { return blockchainNetwork; }
-    public void setBlockchainNetwork(String blockchainNetwork) { this.blockchainNetwork = blockchainNetwork; }
-    
-    public String getTransactionHash() { return transactionHash; }
-    public void setTransactionHash(String transactionHash) { this.transactionHash = transactionHash; }
-    
-    public LocalDateTime getCreatedDate() { return createdDate; }
-    public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
-    
-    public LocalDateTime getUpdatedDate() { return updatedDate; }
-    public void setUpdatedDate(LocalDateTime updatedDate) { this.updatedDate = updatedDate; }
-    
-    @PreUpdate
-    public void preUpdate() {
-        this.updatedDate = LocalDateTime.now();
+
+    public String getCurrency() {
+        return currency;
     }
-    
-    // Calculated methods
-    public BigDecimal getNetAmount() {
-        if (totalAmount != null) {
-            BigDecimal net = totalAmount;
-            if (taxWithheld != null) {
-                net = net.subtract(taxWithheld);
-            }
-            return net;
-        }
-        return BigDecimal.ZERO;
+
+    public void setCurrency(String currency) {
+        this.currency = currency;
     }
-    
-    public BigDecimal getAnnualizedYield() {
-        if (dividendYield != null) {
-            return dividendYield;
-        } else if (stakingApy != null) {
-            return stakingApy;
-        } else if (interestRate != null) {
-            return interestRate;
-        } else if (couponRate != null) {
-            return couponRate;
-        }
-        return BigDecimal.ZERO;
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
     }
-    
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
     @Override
     public String toString() {
         return "Dividend{" +
                 "id=" + id +
-                ", dividendType=" + dividendType +
                 ", paymentDate=" + paymentDate +
+                ", amountPerShare=" + amountPerShare +
+                ", sharesHeld=" + sharesHeld +
                 ", totalAmount=" + totalAmount +
                 ", currency='" + currency + '\'' +
                 '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Dividend)) return false;
+        Dividend dividend = (Dividend) o;
+        return asset.getId().equals(dividend.asset.getId()) && 
+               paymentDate.equals(dividend.paymentDate);
+    }
+
+    @Override
+    public int hashCode() {
+        return asset.getId().hashCode() + paymentDate.hashCode();
     }
 }
