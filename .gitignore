@@ -35,3 +35,6 @@ build/
 ### Security ###
 **/application-local.properties
 **/application-dev.properties
+
+.env
+.env.example
