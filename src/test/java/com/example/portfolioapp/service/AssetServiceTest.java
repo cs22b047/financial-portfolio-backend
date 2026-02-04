@@ -62,8 +62,8 @@ class AssetServiceTest {
     @Test
     void buyStock_Success_CreatesNewAsset() {
         // Arrange
+        when(assetRepository.findBySymbol("AAPL")).thenReturn(Optional.empty());
         when(marketDataRepository.findBySymbol("AAPL")).thenReturn(Optional.of(appleStock));
-        when(assetRepository.findByMarketDataIdAndStatus(1L, AssetStatus.OWNED)).thenReturn(Optional.empty());
         when(assetRepository.save(any(Asset.class))).thenAnswer(i -> i.getArguments()[0]);
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(i -> i.getArguments()[0]);
 
@@ -75,7 +75,7 @@ class AssetServiceTest {
         assertEquals(new BigDecimal("10"), result.getQuantity());
         assertEquals(AssetStatus.OWNED, result.getStatus());
         assertEquals(appleStock, result.getMarketData());
-        
+
         verify(assetRepository).save(any(Asset.class));
         verify(transactionRepository).save(any(Transaction.class));
     }
@@ -90,8 +90,7 @@ class AssetServiceTest {
         existingAsset.setAverageCost(new BigDecimal("170.00"));
         existingAsset.setStatus(AssetStatus.OWNED);
 
-        when(marketDataRepository.findBySymbol("AAPL")).thenReturn(Optional.of(appleStock));
-        when(assetRepository.findByMarketDataIdAndStatus(1L, AssetStatus.OWNED)).thenReturn(Optional.of(existingAsset));
+        when(assetRepository.findBySymbol("AAPL")).thenReturn(Optional.of(existingAsset));
         when(assetRepository.save(any(Asset.class))).thenAnswer(i -> i.getArguments()[0]);
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(i -> i.getArguments()[0]);
 
@@ -102,7 +101,7 @@ class AssetServiceTest {
         assertNotNull(result);
         assertEquals(new BigDecimal("15"), result.getQuantity()); // 5 + 10
         assertTrue(result.getAverageCost().compareTo(new BigDecimal("170.00")) > 0); // New weighted average
-        
+
         verify(assetRepository).save(existingAsset);
         verify(transactionRepository).save(any(Transaction.class));
     }
@@ -227,8 +226,8 @@ class AssetServiceTest {
     @Test
     void addToWatchlist_Success() {
         // Arrange
+        when(assetRepository.findBySymbol("AAPL")).thenReturn(Optional.empty());
         when(marketDataRepository.findBySymbol("AAPL")).thenReturn(Optional.of(appleStock));
-        when(assetRepository.findByMarketDataIdAndStatus(1L, AssetStatus.WATCHLIST)).thenReturn(Optional.empty());
         when(assetRepository.save(any(Asset.class))).thenAnswer(i -> i.getArguments()[0]);
 
         // Act
@@ -240,7 +239,7 @@ class AssetServiceTest {
         assertEquals(BigDecimal.ZERO, result.getQuantity());
         assertEquals(BigDecimal.ZERO, result.getAverageCost());
         assertEquals(appleStock, result.getMarketData());
-        
+
         verify(assetRepository).save(any(Asset.class));
     }
 
@@ -248,16 +247,16 @@ class AssetServiceTest {
     void addToWatchlist_AlreadyExists_ThrowsException() {
         // Arrange
         Asset existingWatchlist = new Asset();
+        existingWatchlist.setMarketData(appleStock);
         existingWatchlist.setStatus(AssetStatus.WATCHLIST);
 
-        when(marketDataRepository.findBySymbol("AAPL")).thenReturn(Optional.of(appleStock));
-        when(assetRepository.findByMarketDataIdAndStatus(1L, AssetStatus.WATCHLIST)).thenReturn(Optional.of(existingWatchlist));
+        when(assetRepository.findBySymbol("AAPL")).thenReturn(Optional.of(existingWatchlist));
 
         // Act & Assert
-        assertThrows(DuplicateResourceException.class, () -> 
+        assertThrows(DuplicateResourceException.class, () ->
             assetService.addToWatchlist("AAPL")
         );
-        
+
         verify(assetRepository, never()).save(any());
     }
 
@@ -363,8 +362,86 @@ class AssetServiceTest {
         when(assetRepository.findBySymbol("INVALID")).thenReturn(Optional.empty());
 
         // Act & Assert
-        assertThrows(ResourceNotFoundException.class, () -> 
+        assertThrows(ResourceNotFoundException.class, () ->
             assetService.getAssetBySymbol("INVALID")
+        );
+    }
+
+    @Test
+    void getTotalPortfolioValue_WithAssets_ReturnsCorrectTotal() {
+        // Arrange
+        BigDecimal expectedTotal = new BigDecimal("50000.00");
+        when(assetRepository.calculateTotalPortfolioValue()).thenReturn(expectedTotal);
+
+        // Act
+        BigDecimal result = assetService.getTotalPortfolioValue();
+
+        // Assert
+        assertEquals(expectedTotal, result);
+        verify(assetRepository).calculateTotalPortfolioValue();
+    }
+
+    @Test
+    void getTotalPortfolioValue_NoAssets_ReturnsZero() {
+        // Arrange
+        when(assetRepository.calculateTotalPortfolioValue()).thenReturn(null);
+
+        // Act
+        BigDecimal result = assetService.getTotalPortfolioValue();
+
+        // Assert
+        assertEquals(BigDecimal.ZERO, result);
+    }
+
+    @Test
+    void getTotalInvestmentCost_ReturnsCorrectTotal() {
+        // Arrange
+        BigDecimal expectedCost = new BigDecimal("45000.00");
+        when(assetRepository.calculateTotalInvestmentCost()).thenReturn(expectedCost);
+
+        // Act
+        BigDecimal result = assetService.getTotalInvestmentCost();
+
+        // Assert
+        assertEquals(expectedCost, result);
+    }
+
+    @Test
+    void calculateUnrealizedGainLoss_ReturnsCorrectValue() {
+        // Arrange
+        when(assetRepository.calculateTotalPortfolioValue()).thenReturn(new BigDecimal("50000.00"));
+        when(assetRepository.calculateTotalInvestmentCost()).thenReturn(new BigDecimal("45000.00"));
+
+        // Act
+        BigDecimal result = assetService.calculateUnrealizedGainLoss();
+
+        // Assert
+        assertEquals(new BigDecimal("5000.00"), result);
+    }
+
+    @Test
+    void getById_ValidId_ReturnsAsset() {
+        // Arrange
+        Asset asset = new Asset();
+        asset.setId(1L);
+        when(assetRepository.findById(1L)).thenReturn(Optional.of(asset));
+
+        // Act
+        Asset result = assetService.getById(1L);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(1L, result.getId());
+    }
+
+    @Test
+    void getById_InvalidId_ThrowsResourceNotFoundException() {
+        // Arrange
+        when(assetRepository.findById(999L)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThrows(ResourceNotFoundException.class, () ->
+            assetService.getById(999L)
         );
     }
 }
