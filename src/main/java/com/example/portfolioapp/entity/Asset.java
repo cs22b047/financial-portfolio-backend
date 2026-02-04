@@ -96,6 +96,10 @@ public class Asset {
     @OneToMany(mappedBy = "asset", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Dividend> dividends = new ArrayList<>();
 
+    @JsonIgnore
+    @OneToMany(mappedBy = "asset", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Alert> alerts = new ArrayList<>();
+
     // Lifecycle callbacks
     @PrePersist
     protected void onCreate() {
@@ -344,6 +348,14 @@ public class Asset {
 
     public void setDividends(List<Dividend> dividends) {
         this.dividends = dividends;
+    }
+
+    public List<Alert> getAlerts() {
+        return alerts;
+    }
+
+    public void setAlerts(List<Alert> alerts) {
+        this.alerts = alerts;
     }
 
     @Override
