@@ -72,7 +72,8 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
     /**
      * Find alerts by direction
      */
-    List<Alert> findByAboveOrBelow(AlertDirection direction);
+    @Query("SELECT al FROM Alert al WHERE al.aboveOrBelow = :direction")
+    List<Alert> findByAboveOrBelow(@Param("direction") AlertDirection direction);
 
     /**
      * Delete all alerts for an asset
