@@ -41,10 +41,12 @@ DATABASE SCHEMA - portfolio_db (MySQL)
             social_score, social_grade, governance_score, governance_grade,
             controversy_level, risk_level, data_source, last_updated, created_date
 
-5. news - News articles with sentiment (may be empty)
-   Columns: id, market_data_id, symbol, title, summary, publisher, link,
+5. news - News articles with sentiment
+   Columns: id, market_data_id (often NULL), symbol (use this for lookups), title, summary, publisher, link,
             published_date, source, sentiment (POSITIVE/NEGATIVE/NEUTRAL),
             image_url, is_read, created_date
+   IMPORTANT: Always query news using the symbol column directly, NOT via market_data_id JOIN
+   Example: SELECT * FROM news WHERE symbol = 'AAPL' ORDER BY published_date DESC
 
 6. price_history - Historical OHLCV data
    Columns: id, market_data_id, price_date, open_price, high_price, low_price,
@@ -58,11 +60,7 @@ DATABASE SCHEMA - portfolio_db (MySQL)
    Columns: id, asset_id, transaction_type, quantity, price, transaction_date,
             fees, notes, created_date
 
-9. dividends - Dividend payment records
-   Columns: id, asset_id, amount, payment_date, ex_dividend_date, record_date,
-            created_date
-
-10. asset_types - Asset type reference table
+9. asset_types - Asset type reference table
     Columns: id, name, description, created_date
 
 KEY RELATIONSHIPS:
@@ -71,7 +69,21 @@ KEY RELATIONSHIPS:
 - technical_indicators.price_history_id -> price_history.id
 - stock_summary.market_data_id -> market_data.id
 - esg_ratings.market_data_id -> market_data.id (also has symbol column for direct lookup)
-- news.market_data_id -> market_data.id (also has symbol column for direct lookup)
+- news.symbol -> market_data.symbol (DO NOT use market_data_id for news, use symbol directly)
+
+ASSET TYPE IDs:
+- 1 = Stock
+- 3 = Cryptocurrency  
+- 6 = Mutual Fund
+
+CRYPTOCURRENCY SYMBOLS (use these exact symbols, NOT with -USD suffix):
+- Bitcoin -> BTC (not BTC-USD)
+- Ethereum -> ETH (not ETH-USD)
+- Tether -> USDT
+- Solana -> SOL
+- Cardano -> ADA
+- Dogecoin -> DOGE
+- Ripple -> XRP
 
 COMPANY NAME TO SYMBOL MAPPINGS (use these for name lookups):
 - Apple, Apple Inc. -> AAPL
@@ -167,6 +179,18 @@ COMMON QUERY EXAMPLES:
 - Price history: SELECT price_date, open_price, close_price, high_price, low_price, volume FROM price_history ph JOIN market_data md ON ph.market_data_id = md.id WHERE md.symbol = 'AAPL' ORDER BY price_date DESC LIMIT 30
 - Top stocks by metric: SELECT symbol, name, current_price, pe_ratio, market_cap FROM market_data ORDER BY market_cap DESC LIMIT 10
 - Sector analysis: SELECT symbol, name, current_price, sector FROM market_data WHERE sector = 'Technology' ORDER BY market_cap DESC
+- NEWS QUERIES (IMPORTANT - use symbol column directly, NOT market_data_id):
+  - Latest news for symbol: SELECT title, summary, publisher, published_date FROM news WHERE symbol = 'AAPL' ORDER BY published_date DESC LIMIT 5
+  - News with stock info: SELECT n.title, n.published_date, md.current_price FROM news n, market_data md WHERE n.symbol = md.symbol AND n.symbol = 'TSLA' ORDER BY n.published_date DESC LIMIT 5
+- CRYPTO QUERIES (use BTC, ETH, SOL - not BTC-USD):
+  - Bitcoin price: SELECT symbol, name, current_price FROM market_data WHERE symbol = 'BTC'
+  - Crypto price history: SELECT ph.price_date, ph.close_price FROM price_history ph JOIN market_data md ON ph.market_data_id = md.id WHERE md.symbol = 'BTC' ORDER BY ph.price_date DESC LIMIT 7
+- PORTFOLIO QUERIES (no user_id filter needed):
+  - My holdings: SELECT symbol, name, quantity, purchase_price, current_price, status FROM assets WHERE status = 'OWNED'
+  - Portfolio value: SELECT SUM(quantity * current_price) as total_value FROM assets WHERE status = 'OWNED'
+  - Portfolio by asset type: SELECT at.name, SUM(a.quantity * a.current_price) as value FROM assets a JOIN asset_types at ON a.asset_type_id = at.id WHERE a.status = 'OWNED' GROUP BY at.name
+  - Portfolio with performance metrics: SELECT a.symbol, md.name, ss.annualized_volatility, ss.max_drawdown, ss.sharpe_ratio FROM assets a JOIN market_data md ON a.symbol = md.symbol JOIN stock_summary ss ON ss.market_data_id = md.id WHERE a.status = 'OWNED' AND ss.period = '5y' ORDER BY ss.annualized_volatility DESC
+  - Portfolio risk analysis: SELECT a.symbol, a.name, ss.annualized_volatility, ss.max_drawdown FROM assets a JOIN market_data md ON a.symbol = md.symbol JOIN stock_summary ss ON ss.market_data_id = md.id WHERE a.status = 'OWNED' ORDER BY ss.max_drawdown ASC LIMIT 10
 
 User Query: {query}
 

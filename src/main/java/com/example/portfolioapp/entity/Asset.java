@@ -16,7 +16,6 @@ import java.util.List;
  * - Many Assets -> One AssetType
  * - Many Assets -> One MarketData (unique constraint)
  * - One Asset -> Many Transactions
- * - One Asset -> Many Dividends
  */
 @Entity
 @Table(name = "assets",
@@ -91,10 +90,6 @@ public class Asset {
     @JsonIgnore
     @OneToMany(mappedBy = "asset", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Transaction> transactions = new ArrayList<>();
-
-    @JsonIgnore
-    @OneToMany(mappedBy = "asset", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Dividend> dividends = new ArrayList<>();
 
     @JsonIgnore
     @OneToMany(mappedBy = "asset", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
@@ -340,14 +335,6 @@ public class Asset {
 
     public void setTransactions(List<Transaction> transactions) {
         this.transactions = transactions;
-    }
-
-    public List<Dividend> getDividends() {
-        return dividends;
-    }
-
-    public void setDividends(List<Dividend> dividends) {
-        this.dividends = dividends;
     }
 
     public List<Alert> getAlerts() {

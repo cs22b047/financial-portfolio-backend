@@ -72,9 +72,6 @@ function loadTabData(tabName) {
             loadAllTransactions();
             loadTransactionSummary();
             break;
-        case 'dividends':
-            loadAllDividends();
-            break;
         case 'trade':
             loadPositionsForSell();
             break;
@@ -89,7 +86,6 @@ function initializeDates() {
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('buyDate').value = today;
     document.getElementById('sellDate').value = today;
-    document.getElementById('divPaymentDate').value = today;
 }
 
 // Refresh all data
@@ -114,10 +110,6 @@ async function loadDashboard() {
         document.getElementById('totalGainLoss').className = 'card-value ' + (summary.totalGainLoss >= 0 ? 'positive' : 'negative');
         document.getElementById('totalGainLossPercent').textContent = formatPercent(summary.totalGainLossPercent || 0);
         document.getElementById('totalPositions').textContent = summary.totalPositions || 0;
-        
-        // Load dividend income
-        const dividends = await fetchAPI('/dividends/total-income');
-        document.getElementById('dividendIncome').textContent = formatCurrency(dividends.totalIncome || 0);
         
         // Load top performers
         const topPerformers = await fetchAPI('/portfolio/top-performers?limit=5');
@@ -607,110 +599,6 @@ async function filterByTransType() {
     } catch (error) {
         console.error('Error filtering by type:', error);
         showToast('Error filtering transactions', 'error');
-    }
-}
-
-// ==================== DIVIDENDS ====================
-
-async function loadAllDividends() {
-    try {
-        const dividends = await fetchAPI('/dividends/recent?months=12');
-        displayDividends(dividends);
-        
-        // Load dividend summary
-        const totalIncome = await fetchAPI('/dividends/total-income');
-        document.getElementById('totalDivIncome').textContent = formatCurrency(totalIncome.totalIncome || 0);
-        document.getElementById('divCount').textContent = dividends.length || 0;
-    } catch (error) {
-        console.error('Error loading dividends:', error);
-        showToast('Error loading dividends', 'error');
-    }
-}
-
-function displayDividends(dividends) {
-    const container = document.getElementById('dividendsTable');
-    
-    if (!dividends || dividends.length === 0) {
-        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💵</div><div class="empty-state-text">No dividend payments</div></div>';
-        return;
-    }
-    
-    container.innerHTML = `
-        <table>
-            <thead>
-                <tr>
-                    <th>Symbol</th>
-                    <th>Payment Date</th>
-                    <th>Amount/Share</th>
-                    <th>Shares</th>
-                    <th>Total Amount</th>
-                    <th>Type</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${dividends.map(d => `
-                    <tr>
-                        <td><strong>${d.symbol || 'N/A'}</strong></td>
-                        <td>${formatDate(d.paymentDate)}</td>
-                        <td>${formatCurrency(d.amountPerShare || 0)}</td>
-                        <td>${d.sharesAtPayment || 0}</td>
-                        <td>${formatCurrency(d.totalAmount || 0)}</td>
-                        <td><span class="badge badge-info">${d.dividendType || 'CASH'}</span></td>
-                    </tr>
-                `).join('')}
-            </tbody>
-        </table>
-    `;
-}
-
-async function filterDividends() {
-    const startDate = document.getElementById('divStartDate').value;
-    const endDate = document.getElementById('divEndDate').value;
-    
-    if (!startDate || !endDate) {
-        showToast('Please select both dates', 'error');
-        return;
-    }
-    
-    try {
-        const dividends = await fetchAPI(`/dividends/date-range?startDate=${startDate}&endDate=${endDate}`);
-        displayDividends(dividends);
-        
-        // Update summary for filtered date range
-        const totalIncome = await fetchAPI(`/dividends/total-income?startDate=${startDate}&endDate=${endDate}`);
-        document.getElementById('totalDivIncome').textContent = formatCurrency(totalIncome.totalIncome || 0);
-        document.getElementById('divCount').textContent = dividends.length || 0;
-        
-        showToast('Dividends filtered by date', 'info');
-    } catch (error) {
-        console.error('Error filtering dividends:', error);
-        showToast('Error filtering dividends', 'error');
-    }
-}
-
-async function recordDividend() {
-    const symbol = document.getElementById('divSymbol').value.trim().toUpperCase();
-    const paymentDate = document.getElementById('divPaymentDate').value;
-    const amountPerShare = parseFloat(document.getElementById('divAmount').value);
-    
-    if (!symbol || !paymentDate || !amountPerShare) {
-        showToast('Please fill all fields', 'error');
-        return;
-    }
-    
-    try {
-        await fetchAPI('/dividends', {
-            method: 'POST',
-            body: JSON.stringify({ symbol, paymentDate, amountPerShare })
-        });
-        
-        document.getElementById('divSymbol').value = '';
-        document.getElementById('divAmount').value = '';
-        showToast('Dividend recorded successfully', 'success');
-        loadAllDividends();
-    } catch (error) {
-        console.error('Error recording dividend:', error);
-        showToast('Error recording dividend', 'error');
     }
 }
 

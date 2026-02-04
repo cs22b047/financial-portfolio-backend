@@ -136,7 +136,7 @@ class SQLGenerator:
         # Known tables in the database
         known_tables = [
             'market_data', 'technical_indicators', 'stock_summary', 'esg_ratings',
-            'news', 'price_history', 'assets', 'transactions', 'dividends',
+            'news', 'price_history', 'assets', 'transactions',
             'asset_types', 'conversations', 'chat_messages', 'chat_context'
         ]
         

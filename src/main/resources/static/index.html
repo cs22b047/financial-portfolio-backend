@@ -26,7 +26,6 @@
             <button class="tab-btn" onclick="showTab('positions')">📈 Positions</button>
             <button class="tab-btn" onclick="showTab('market')">💹 Market</button>
             <button class="tab-btn" onclick="showTab('transactions')">💸 Transactions</button>
-            <button class="tab-btn" onclick="showTab('dividends')">💰 Dividends</button>
             <button class="tab-btn" onclick="showTab('trade')">🛒 Trade</button>
             <button class="tab-btn" onclick="showTab('analytics')">📉 Analytics</button>
         </nav>
@@ -54,11 +53,7 @@
                     <div class="card-value" id="totalPositions">0</div>
                     <div class="card-subtitle">Active Holdings</div>
                 </div>
-                <div class="card">
-                    <div class="card-header">Dividend Income</div>
-                    <div class="card-value" id="dividendIncome">$0.00</div>
-                    <div class="card-subtitle">Total Received</div>
-                </div>
+
             </div>
 
             <div class="row">
@@ -174,42 +169,6 @@
             </div>
 
             <div class="table-container" id="transactionsTable"></div>
-        </div>
-
-        <!-- Dividends Tab -->
-        <div id="dividends" class="tab-content">
-            <h2>Dividend Income</h2>
-            
-            <div class="action-bar">
-                <input type="date" id="divStartDate" class="input-field">
-                <input type="date" id="divEndDate" class="input-field">
-                <button class="btn btn-primary" onclick="filterDividends()">Filter by Date</button>
-                <button class="btn btn-secondary" onclick="loadAllDividends()">Show All</button>
-            </div>
-
-            <div class="card-container">
-                <h3>Recent Dividends</h3>
-                <div class="table-container" id="dividendsTable"></div>
-            </div>
-
-            <div class="card-container">
-                <h3>Record New Dividend</h3>
-                <div class="form-container">
-                    <div class="form-group">
-                        <label>Stock Symbol</label>
-                        <input type="text" id="divSymbol" placeholder="e.g., AAPL" class="input-field">
-                    </div>
-                    <div class="form-group">
-                        <label>Payment Date</label>
-                        <input type="date" id="divPaymentDate" class="input-field">
-                    </div>
-                    <div class="form-group">
-                        <label>Amount Per Share</label>
-                        <input type="number" id="divAmount" step="0.01" placeholder="0.00" class="input-field">
-                    </div>
-                    <button class="btn btn-success" onclick="recordDividend()">Record Dividend</button>
-                </div>
-            </div>
         </div>
 
         <!-- Trade Tab -->
