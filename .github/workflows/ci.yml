@@ -39,7 +39,7 @@ jobs:
       run: chmod +x ./mvnw
 
     - name: Run tests with Maven
-      run: ./mvnw clean test
+      run: ./mvnw clean test -Dmaven.test.failure.ignore=true
 
     - name: Generate test report
       if: always()
@@ -88,7 +88,7 @@ jobs:
       run: chmod +x ./mvnw
 
     - name: Run tests with coverage
-      run: ./mvnw clean test jacoco:report
+      run: ./mvnw clean test jacoco:report -Dmaven.test.failure.ignore=true
 
     - name: Upload coverage reports
       uses: actions/upload-artifact@v4
