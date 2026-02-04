@@ -62,8 +62,8 @@ class AssetServiceTest {
     @Test
     void buyStock_Success_CreatesNewAsset() {
         // Arrange
+        when(assetRepository.findBySymbol("AAPL")).thenReturn(Optional.empty());
         when(marketDataRepository.findBySymbol("AAPL")).thenReturn(Optional.of(appleStock));
-        when(assetRepository.findByMarketDataIdAndStatus(1L, AssetStatus.OWNED)).thenReturn(Optional.empty());
         when(assetRepository.save(any(Asset.class))).thenAnswer(i -> i.getArguments()[0]);
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(i -> i.getArguments()[0]);
 
@@ -75,7 +75,7 @@ class AssetServiceTest {
         assertEquals(new BigDecimal("10"), result.getQuantity());
         assertEquals(AssetStatus.OWNED, result.getStatus());
         assertEquals(appleStock, result.getMarketData());
-        
+
         verify(assetRepository).save(any(Asset.class));
         verify(transactionRepository).save(any(Transaction.class));
     }
@@ -90,8 +90,7 @@ class AssetServiceTest {
         existingAsset.setAverageCost(new BigDecimal("170.00"));
         existingAsset.setStatus(AssetStatus.OWNED);
 
-        when(marketDataRepository.findBySymbol("AAPL")).thenReturn(Optional.of(appleStock));
-        when(assetRepository.findByMarketDataIdAndStatus(1L, AssetStatus.OWNED)).thenReturn(Optional.of(existingAsset));
+        when(assetRepository.findBySymbol("AAPL")).thenReturn(Optional.of(existingAsset));
         when(assetRepository.save(any(Asset.class))).thenAnswer(i -> i.getArguments()[0]);
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(i -> i.getArguments()[0]);
 
@@ -102,7 +101,7 @@ class AssetServiceTest {
         assertNotNull(result);
         assertEquals(new BigDecimal("15"), result.getQuantity()); // 5 + 10
         assertTrue(result.getAverageCost().compareTo(new BigDecimal("170.00")) > 0); // New weighted average
-        
+
         verify(assetRepository).save(existingAsset);
         verify(transactionRepository).save(any(Transaction.class));
     }
@@ -227,8 +226,8 @@ class AssetServiceTest {
     @Test
     void addToWatchlist_Success() {
         // Arrange
+        when(assetRepository.findBySymbol("AAPL")).thenReturn(Optional.empty());
         when(marketDataRepository.findBySymbol("AAPL")).thenReturn(Optional.of(appleStock));
-        when(assetRepository.findByMarketDataIdAndStatus(1L, AssetStatus.WATCHLIST)).thenReturn(Optional.empty());
         when(assetRepository.save(any(Asset.class))).thenAnswer(i -> i.getArguments()[0]);
 
         // Act
@@ -240,7 +239,7 @@ class AssetServiceTest {
         assertEquals(BigDecimal.ZERO, result.getQuantity());
         assertEquals(BigDecimal.ZERO, result.getAverageCost());
         assertEquals(appleStock, result.getMarketData());
-        
+
         verify(assetRepository).save(any(Asset.class));
     }
 
