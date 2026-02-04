@@ -1,8 +1,6 @@
 package com.example.portfolioapp.service;
 
 import com.example.portfolioapp.entity.UserSettings;
-import com.example.portfolioapp.exception.DuplicateResourceException;
-import com.example.portfolioapp.exception.ResourceNotFoundException;
 import com.example.portfolioapp.repository.UserSettingsRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,11 +8,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Optional;
+import java.math.BigDecimal;
 
 /**
  * Service for UserSettings operations.
+ * Single-row design - manages the one and only settings record.
  */
 @Service
 public class UserSettingsService {
@@ -25,148 +23,99 @@ public class UserSettingsService {
     private UserSettingsRepository userSettingsRepository;
 
     /**
-     * Get all user settings
-     */
-    public List<UserSettings> getAllSettings() {
-        return userSettingsRepository.findAll();
-    }
-
-    /**
-     * Get settings by ID
-     */
-    public UserSettings getSettingsById(Long id) {
-        return userSettingsRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("UserSettings", id));
-    }
-
-    /**
-     * Get settings by user name
-     */
-    public UserSettings getSettingsByUserName(String userName) {
-        return userSettingsRepository.findByUserName(userName)
-                .orElseThrow(() -> new ResourceNotFoundException("UserSettings", "userName", userName));
-    }
-
-    /**
-     * Get or create default settings
+     * Get the singleton settings record
+     * Creates default settings if none exist
      */
     @Transactional
-    public UserSettings getOrCreateDefaultSettings() {
-        Optional<UserSettings> existing = userSettingsRepository.findDefaultSettings();
-        if (existing.isPresent()) {
-            return existing.get();
-        }
-        
-        UserSettings defaultSettings = new UserSettings("default");
+    public UserSettings getSettings() {
+        return userSettingsRepository.getSettings()
+                .orElseGet(this::createDefaultSettings);
+    }
+
+    /**
+     * Create default settings (called once during initialization)
+     */
+    @Transactional
+    private UserSettings createDefaultSettings() {
+        logger.info("Creating default user settings");
+        UserSettings defaultSettings = new UserSettings(
+            "user",
+            "USD",
+            "UTC",
+            "USD",
+            "light",
+            BigDecimal.ZERO
+        );
         return userSettingsRepository.save(defaultSettings);
     }
 
     /**
-     * Create new user settings
+     * Update settings
+     * Only one settings record exists, so this updates that record
      */
     @Transactional
-    public UserSettings createSettings(UserSettings settings) {
-        logger.info("Creating user settings for: {}", settings.getUserName());
+    public UserSettings updateSettings(UserSettings updates) {
+        logger.info("Updating user settings");
+        
+        UserSettings current = getSettings();
 
-        if (settings.getUserName() != null && userSettingsRepository.existsByUserName(settings.getUserName())) {
-            throw new DuplicateResourceException("UserSettings already exists for user: " + settings.getUserName());
-        }
-
-        return userSettingsRepository.save(settings);
-    }
-
-    /**
-     * Update existing settings
-     */
-    @Transactional
-    public UserSettings updateSettings(Long id, UserSettings updates) {
-        logger.info("Updating user settings: {}", id);
-
-        UserSettings settings = userSettingsRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("UserSettings", id));
-
-        // Update fields if provided
+        // Update only non-null fields
         if (updates.getUserName() != null) {
-            settings.setUserName(updates.getUserName());
+            current.setUserName(updates.getUserName());
         }
         if (updates.getDefaultCurrency() != null) {
-            settings.setDefaultCurrency(updates.getDefaultCurrency());
+            current.setDefaultCurrency(updates.getDefaultCurrency());
         }
-        if (updates.getTimezone() != null) {
-            settings.setTimezone(updates.getTimezone());
+        if (updates.getTimeZone() != null) {
+            current.setTimeZone(updates.getTimeZone());
         }
-        if (updates.getDateFormat() != null) {
-            settings.setDateFormat(updates.getDateFormat());
-        }
-        if (updates.getDecimalPlaces() != null) {
-            settings.setDecimalPlaces(updates.getDecimalPlaces());
+        if (updates.getCurrency() != null) {
+            current.setCurrency(updates.getCurrency());
         }
         if (updates.getTheme() != null) {
-            settings.setTheme(updates.getTheme());
+            current.setTheme(updates.getTheme());
         }
-        if (updates.getNotificationsEnabled() != null) {
-            settings.setNotificationsEnabled(updates.getNotificationsEnabled());
-        }
-        if (updates.getPriceAlertsEnabled() != null) {
-            settings.setPriceAlertsEnabled(updates.getPriceAlertsEnabled());
+        if (updates.getWallet() != null) {
+            current.setWallet(updates.getWallet());
         }
 
+        return userSettingsRepository.save(current);
+    }
+
+    /**
+     * Update wallet balance
+     */
+    @Transactional
+    public UserSettings updateWallet(BigDecimal amount) {
+        logger.info("Updating wallet: {}", amount);
+        UserSettings settings = getSettings();
+        settings.setWallet(amount);
         return userSettingsRepository.save(settings);
     }
 
     /**
-     * Update settings by user name
+     * Add to wallet
      */
     @Transactional
-    public UserSettings updateSettingsByUserName(String userName, UserSettings updates) {
-        logger.info("Updating settings for user: {}", userName);
-
-        UserSettings settings = userSettingsRepository.findByUserName(userName)
-                .orElseThrow(() -> new ResourceNotFoundException("UserSettings", "userName", userName));
-
-        return updateSettings(settings.getId(), updates);
-    }
-
-    /**
-     * Delete settings by ID
-     */
-    @Transactional
-    public void deleteSettings(Long id) {
-        if (!userSettingsRepository.existsById(id)) {
-            throw new ResourceNotFoundException("UserSettings", id);
-        }
-        userSettingsRepository.deleteById(id);
-        logger.info("Deleted user settings: {}", id);
-    }
-
-    /**
-     * Delete settings by user name
-     */
-    @Transactional
-    public void deleteSettingsByUserName(String userName) {
-        UserSettings settings = userSettingsRepository.findByUserName(userName)
-                .orElseThrow(() -> new ResourceNotFoundException("UserSettings", "userName", userName));
-        userSettingsRepository.delete(settings);
-        logger.info("Deleted settings for user: {}", userName);
-    }
-
-    /**
-     * Toggle notifications
-     */
-    @Transactional
-    public UserSettings toggleNotifications(Long id) {
-        UserSettings settings = getSettingsById(id);
-        settings.setNotificationsEnabled(!settings.getNotificationsEnabled());
+    public UserSettings addToWallet(BigDecimal amount) {
+        logger.info("Adding to wallet: {}", amount);
+        UserSettings settings = getSettings();
+        settings.setWallet(settings.getWallet().add(amount));
         return userSettingsRepository.save(settings);
     }
 
     /**
-     * Toggle price alerts
+     * Subtract from wallet
      */
     @Transactional
-    public UserSettings togglePriceAlerts(Long id) {
-        UserSettings settings = getSettingsById(id);
-        settings.setPriceAlertsEnabled(!settings.getPriceAlertsEnabled());
+    public UserSettings subtractFromWallet(BigDecimal amount) {
+        logger.info("Subtracting from wallet: {}", amount);
+        UserSettings settings = getSettings();
+        BigDecimal newBalance = settings.getWallet().subtract(amount);
+        if (newBalance.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Insufficient wallet balance");
+        }
+        settings.setWallet(newBalance);
         return userSettingsRepository.save(settings);
     }
 
@@ -174,30 +123,17 @@ public class UserSettingsService {
      * Change theme
      */
     @Transactional
-    public UserSettings changeTheme(Long id, String theme) {
-        UserSettings settings = getSettingsById(id);
+    public UserSettings changeTheme(String theme) {
+        logger.info("Changing theme to: {}", theme);
+        UserSettings settings = getSettings();
         settings.setTheme(theme);
         return userSettingsRepository.save(settings);
     }
 
     /**
-     * Get users with notifications enabled
+     * Get current wallet balance
      */
-    public List<UserSettings> getUsersWithNotificationsEnabled() {
-        return userSettingsRepository.findByNotificationsEnabledTrue();
-    }
-
-    /**
-     * Get users with price alerts enabled
-     */
-    public List<UserSettings> getUsersWithPriceAlertsEnabled() {
-        return userSettingsRepository.findByPriceAlertsEnabledTrue();
-    }
-
-    /**
-     * Check if settings exist for user
-     */
-    public boolean existsByUserName(String userName) {
-        return userSettingsRepository.existsByUserName(userName);
+    public BigDecimal getWalletBalance() {
+        return getSettings().getWallet();
     }
 }

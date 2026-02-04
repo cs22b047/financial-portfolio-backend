@@ -7,11 +7,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import java.math.BigDecimal;
 import java.util.Map;
 
 /**
  * REST Controller for UserSettings operations.
+ * Single-row design - manages the one settings record.
  */
 @RestController
 @RequestMapping("/api/user-settings")
@@ -22,148 +23,87 @@ public class UserSettingsController {
     private UserSettingsService userSettingsService;
 
     /**
-     * Get all user settings
+     * Get user settings
      * GET /api/user-settings
      */
     @GetMapping
-    public ResponseEntity<List<UserSettings>> getAllSettings() {
-        return ResponseEntity.ok(userSettingsService.getAllSettings());
+    public ResponseEntity<UserSettings> getSettings() {
+        return ResponseEntity.ok(userSettingsService.getSettings());
     }
 
     /**
-     * Get settings by ID
-     * GET /api/user-settings/{id}
+     * Update user settings
+     * PUT /api/user-settings
      */
-    @GetMapping("/{id}")
-    public ResponseEntity<UserSettings> getSettingsById(@PathVariable Long id) {
-        return ResponseEntity.ok(userSettingsService.getSettingsById(id));
-    }
-
-    /**
-     * Get settings by user name
-     * GET /api/user-settings/user/{userName}
-     */
-    @GetMapping("/user/{userName}")
-    public ResponseEntity<UserSettings> getSettingsByUserName(@PathVariable String userName) {
-        return ResponseEntity.ok(userSettingsService.getSettingsByUserName(userName));
-    }
-
-    /**
-     * Get or create default settings
-     * GET /api/user-settings/default
-     */
-    @GetMapping("/default")
-    public ResponseEntity<UserSettings> getDefaultSettings() {
-        return ResponseEntity.ok(userSettingsService.getOrCreateDefaultSettings());
-    }
-
-    /**
-     * Create new user settings
-     * POST /api/user-settings
-     */
-    @PostMapping
-    public ResponseEntity<UserSettings> createSettings(@RequestBody UserSettings settings) {
-        UserSettings created = userSettingsService.createSettings(settings);
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
-    }
-
-    /**
-     * Update settings by ID
-     * PUT /api/user-settings/{id}
-     */
-    @PutMapping("/{id}")
-    public ResponseEntity<UserSettings> updateSettings(
-            @PathVariable Long id,
-            @RequestBody UserSettings updates) {
-        return ResponseEntity.ok(userSettingsService.updateSettings(id, updates));
-    }
-
-    /**
-     * Update settings by user name
-     * PUT /api/user-settings/user/{userName}
-     */
-    @PutMapping("/user/{userName}")
-    public ResponseEntity<UserSettings> updateSettingsByUserName(
-            @PathVariable String userName,
-            @RequestBody UserSettings updates) {
-        return ResponseEntity.ok(userSettingsService.updateSettingsByUserName(userName, updates));
-    }
-
-    /**
-     * Delete settings by ID
-     * DELETE /api/user-settings/{id}
-     */
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteSettings(@PathVariable Long id) {
-        userSettingsService.deleteSettings(id);
-        return ResponseEntity.noContent().build();
-    }
-
-    /**
-     * Delete settings by user name
-     * DELETE /api/user-settings/user/{userName}
-     */
-    @DeleteMapping("/user/{userName}")
-    public ResponseEntity<Void> deleteSettingsByUserName(@PathVariable String userName) {
-        userSettingsService.deleteSettingsByUserName(userName);
-        return ResponseEntity.noContent().build();
-    }
-
-    /**
-     * Toggle notifications
-     * PATCH /api/user-settings/{id}/toggle-notifications
-     */
-    @PatchMapping("/{id}/toggle-notifications")
-    public ResponseEntity<UserSettings> toggleNotifications(@PathVariable Long id) {
-        return ResponseEntity.ok(userSettingsService.toggleNotifications(id));
-    }
-
-    /**
-     * Toggle price alerts
-     * PATCH /api/user-settings/{id}/toggle-price-alerts
-     */
-    @PatchMapping("/{id}/toggle-price-alerts")
-    public ResponseEntity<UserSettings> togglePriceAlerts(@PathVariable Long id) {
-        return ResponseEntity.ok(userSettingsService.togglePriceAlerts(id));
+    @PutMapping
+    public ResponseEntity<UserSettings> updateSettings(@RequestBody UserSettings updates) {
+        return ResponseEntity.ok(userSettingsService.updateSettings(updates));
     }
 
     /**
      * Change theme
-     * PATCH /api/user-settings/{id}/theme
+     * PATCH /api/user-settings/theme
      */
-    @PatchMapping("/{id}/theme")
-    public ResponseEntity<UserSettings> changeTheme(
-            @PathVariable Long id,
-            @RequestBody Map<String, String> request) {
+    @PatchMapping("/theme")
+    public ResponseEntity<UserSettings> changeTheme(@RequestBody Map<String, String> request) {
         String theme = request.get("theme");
-        return ResponseEntity.ok(userSettingsService.changeTheme(id, theme));
+        if (theme == null || theme.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(userSettingsService.changeTheme(theme));
     }
 
     /**
-     * Check if settings exist for user
-     * GET /api/user-settings/exists/{userName}
+     * Get wallet balance
+     * GET /api/user-settings/wallet
      */
-    @GetMapping("/exists/{userName}")
-    public ResponseEntity<Map<String, Boolean>> existsByUserName(@PathVariable String userName) {
-        boolean exists = userSettingsService.existsByUserName(userName);
-        return ResponseEntity.ok(Map.of("exists", exists));
+    @GetMapping("/wallet")
+    public ResponseEntity<Map<String, BigDecimal>> getWallet() {
+        BigDecimal balance = userSettingsService.getWalletBalance();
+        return ResponseEntity.ok(Map.of("wallet", balance));
     }
 
     /**
-     * Get users with notifications enabled
-     * GET /api/user-settings/notifications-enabled
+     * Update wallet balance
+     * PATCH /api/user-settings/wallet
      */
-    @GetMapping("/notifications-enabled")
-    public ResponseEntity<List<UserSettings>> getUsersWithNotificationsEnabled() {
-        return ResponseEntity.ok(userSettingsService.getUsersWithNotificationsEnabled());
+    @PatchMapping("/wallet")
+    public ResponseEntity<UserSettings> updateWallet(@RequestBody Map<String, BigDecimal> request) {
+        BigDecimal amount = request.get("amount");
+        if (amount == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(userSettingsService.updateWallet(amount));
     }
 
     /**
-     * Get users with price alerts enabled
-     * GET /api/user-settings/price-alerts-enabled
+     * Add to wallet
+     * POST /api/user-settings/wallet/add
      */
-    @GetMapping("/price-alerts-enabled")
-    public ResponseEntity<List<UserSettings>> getUsersWithPriceAlertsEnabled() {
-        return ResponseEntity.ok(userSettingsService.getUsersWithPriceAlertsEnabled());
+    @PostMapping("/wallet/add")
+    public ResponseEntity<UserSettings> addToWallet(@RequestBody Map<String, BigDecimal> request) {
+        BigDecimal amount = request.get("amount");
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(userSettingsService.addToWallet(amount));
+    }
+
+    /**
+     * Subtract from wallet
+     * POST /api/user-settings/wallet/subtract
+     */
+    @PostMapping("/wallet/subtract")
+    public ResponseEntity<?> subtractFromWallet(@RequestBody Map<String, BigDecimal> request) {
+        BigDecimal amount = request.get("amount");
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            return ResponseEntity.badRequest().build();
+        }
+        try {
+            return ResponseEntity.ok(userSettingsService.subtractFromWallet(amount));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage()));
+        }
     }
 }
