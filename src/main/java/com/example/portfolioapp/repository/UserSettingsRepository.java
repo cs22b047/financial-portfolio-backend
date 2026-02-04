@@ -18,7 +18,7 @@ public interface UserSettingsRepository extends JpaRepository<UserSettings, Long
      * Get the singleton settings record
      * Since there's only one row, this always returns the same record
      */
-    @Query("SELECT u FROM UserSettings u LIMIT 1")
+    @Query("SELECT u FROM UserSettings u")
     Optional<UserSettings> getSettings();
 
     /**

@@ -35,6 +35,9 @@ public class UserSettings {
     @Column(name = "wallet", precision = 15, scale = 2)
     private BigDecimal wallet = BigDecimal.ZERO;
 
+    @Column(name = "target", precision = 15, scale = 2)
+    private BigDecimal target = new BigDecimal("150000");
+
     @Column(name = "created_date", updatable = false)
     private LocalDateTime createdDate;
 
@@ -68,6 +71,17 @@ public class UserSettings {
         this.currency = currency;
         this.theme = theme;
         this.wallet = wallet;
+    }
+
+    public UserSettings(String userName, String defaultCurrency, String timeZone, 
+                       String currency, String theme, BigDecimal wallet, BigDecimal target) {
+        this.userName = userName;
+        this.defaultCurrency = defaultCurrency;
+        this.timeZone = timeZone;
+        this.currency = currency;
+        this.theme = theme;
+        this.wallet = wallet;
+        this.target = target;
     }
 
     // Getters and Setters
@@ -127,6 +141,14 @@ public class UserSettings {
         this.wallet = wallet;
     }
 
+    public BigDecimal getTarget() {
+        return target;
+    }
+
+    public void setTarget(BigDecimal target) {
+        this.target = target;
+    }
+
     public LocalDateTime getCreatedDate() {
         return createdDate;
     }
@@ -153,6 +175,7 @@ public class UserSettings {
                 ", currency='" + currency + '\'' +
                 ", theme='" + theme + '\'' +
                 ", wallet=" + wallet +
+                ", target=" + target +
                 '}';
     }
 }

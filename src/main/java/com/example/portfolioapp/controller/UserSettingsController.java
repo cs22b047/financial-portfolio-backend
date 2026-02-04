@@ -106,4 +106,27 @@ public class UserSettingsController {
                     .body(Map.of("error", e.getMessage()));
         }
     }
+
+    /**
+     * Get target goal
+     * GET /api/user-settings/target
+     */
+    @GetMapping("/target")
+    public ResponseEntity<Map<String, BigDecimal>> getTarget() {
+        BigDecimal target = userSettingsService.getTarget();
+        return ResponseEntity.ok(Map.of("target", target));
+    }
+
+    /**
+     * Update target goal
+     * PATCH /api/user-settings/target
+     */
+    @PatchMapping("/target")
+    public ResponseEntity<UserSettings> updateTarget(@RequestBody Map<String, BigDecimal> request) {
+        BigDecimal target = request.get("target");
+        if (target == null || target.compareTo(BigDecimal.ZERO) <= 0) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(userSettingsService.updateTarget(target));
+    }
 }

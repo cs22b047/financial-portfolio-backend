@@ -78,6 +78,9 @@ public class UserSettingsService {
         if (updates.getWallet() != null) {
             current.setWallet(updates.getWallet());
         }
+        if (updates.getTarget() != null) {
+            current.setTarget(updates.getTarget());
+        }
 
         return userSettingsRepository.save(current);
     }
@@ -135,5 +138,23 @@ public class UserSettingsService {
      */
     public BigDecimal getWalletBalance() {
         return getSettings().getWallet();
+    }
+
+    /**
+     * Update target goal
+     */
+    @Transactional
+    public UserSettings updateTarget(BigDecimal target) {
+        logger.info("Updating target: {}", target);
+        UserSettings settings = getSettings();
+        settings.setTarget(target);
+        return userSettingsRepository.save(settings);
+    }
+
+    /**
+     * Get current target goal
+     */
+    public BigDecimal getTarget() {
+        return getSettings().getTarget();
     }
 }
