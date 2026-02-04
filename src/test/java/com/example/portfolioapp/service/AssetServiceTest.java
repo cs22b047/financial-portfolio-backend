@@ -247,16 +247,16 @@ class AssetServiceTest {
     void addToWatchlist_AlreadyExists_ThrowsException() {
         // Arrange
         Asset existingWatchlist = new Asset();
+        existingWatchlist.setMarketData(appleStock);
         existingWatchlist.setStatus(AssetStatus.WATCHLIST);
 
-        when(marketDataRepository.findBySymbol("AAPL")).thenReturn(Optional.of(appleStock));
-        when(assetRepository.findByMarketDataIdAndStatus(1L, AssetStatus.WATCHLIST)).thenReturn(Optional.of(existingWatchlist));
+        when(assetRepository.findBySymbol("AAPL")).thenReturn(Optional.of(existingWatchlist));
 
         // Act & Assert
-        assertThrows(DuplicateResourceException.class, () -> 
+        assertThrows(DuplicateResourceException.class, () ->
             assetService.addToWatchlist("AAPL")
         );
-        
+
         verify(assetRepository, never()).save(any());
     }
 
