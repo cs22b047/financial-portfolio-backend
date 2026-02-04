@@ -363,8 +363,86 @@ class AssetServiceTest {
         when(assetRepository.findBySymbol("INVALID")).thenReturn(Optional.empty());
 
         // Act & Assert
-        assertThrows(ResourceNotFoundException.class, () -> 
+        assertThrows(ResourceNotFoundException.class, () ->
             assetService.getAssetBySymbol("INVALID")
+        );
+    }
+
+    @Test
+    void getTotalPortfolioValue_WithAssets_ReturnsCorrectTotal() {
+        // Arrange
+        BigDecimal expectedTotal = new BigDecimal("50000.00");
+        when(assetRepository.calculateTotalPortfolioValue()).thenReturn(expectedTotal);
+
+        // Act
+        BigDecimal result = assetService.getTotalPortfolioValue();
+
+        // Assert
+        assertEquals(expectedTotal, result);
+        verify(assetRepository).calculateTotalPortfolioValue();
+    }
+
+    @Test
+    void getTotalPortfolioValue_NoAssets_ReturnsZero() {
+        // Arrange
+        when(assetRepository.calculateTotalPortfolioValue()).thenReturn(null);
+
+        // Act
+        BigDecimal result = assetService.getTotalPortfolioValue();
+
+        // Assert
+        assertEquals(BigDecimal.ZERO, result);
+    }
+
+    @Test
+    void getTotalInvestmentCost_ReturnsCorrectTotal() {
+        // Arrange
+        BigDecimal expectedCost = new BigDecimal("45000.00");
+        when(assetRepository.calculateTotalInvestmentCost()).thenReturn(expectedCost);
+
+        // Act
+        BigDecimal result = assetService.getTotalInvestmentCost();
+
+        // Assert
+        assertEquals(expectedCost, result);
+    }
+
+    @Test
+    void calculateUnrealizedGainLoss_ReturnsCorrectValue() {
+        // Arrange
+        when(assetRepository.calculateTotalPortfolioValue()).thenReturn(new BigDecimal("50000.00"));
+        when(assetRepository.calculateTotalInvestmentCost()).thenReturn(new BigDecimal("45000.00"));
+
+        // Act
+        BigDecimal result = assetService.calculateUnrealizedGainLoss();
+
+        // Assert
+        assertEquals(new BigDecimal("5000.00"), result);
+    }
+
+    @Test
+    void getById_ValidId_ReturnsAsset() {
+        // Arrange
+        Asset asset = new Asset();
+        asset.setId(1L);
+        when(assetRepository.findById(1L)).thenReturn(Optional.of(asset));
+
+        // Act
+        Asset result = assetService.getById(1L);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(1L, result.getId());
+    }
+
+    @Test
+    void getById_InvalidId_ThrowsResourceNotFoundException() {
+        // Arrange
+        when(assetRepository.findById(999L)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThrows(ResourceNotFoundException.class, () ->
+            assetService.getById(999L)
         );
     }
 }
