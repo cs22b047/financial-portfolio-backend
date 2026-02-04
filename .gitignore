@@ -17,6 +17,7 @@ target/
 .idea
 *.iws
 *.iml
+financial-portfolio-backend/.azure
 *.ipr
 
 ### NetBeans ###

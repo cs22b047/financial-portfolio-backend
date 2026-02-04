@@ -1,5 +1,6 @@
 package com.example.portfolioapp.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -22,5 +23,13 @@ public class ChatbotConfig {
         factory.setReadTimeout(30000);   // 30 seconds
 
         return new RestTemplate(factory);
+    }
+
+    /**
+     * ObjectMapper bean for JSON serialization/deserialization
+     */
+    @Bean
+    public ObjectMapper objectMapper() {
+        return new ObjectMapper();
     }
 }
