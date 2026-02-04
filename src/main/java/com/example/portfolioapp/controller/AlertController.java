@@ -1,5 +1,6 @@
 package com.example.portfolioapp.controller;
 
+import com.example.portfolioapp.dto.AlertDTO;
 import com.example.portfolioapp.entity.Alert;
 import com.example.portfolioapp.entity.AlertDirection;
 import com.example.portfolioapp.service.AlertService;
@@ -35,14 +36,14 @@ public class AlertController {
      * }
      */
     @PostMapping
-    public ResponseEntity<Alert> createAlert(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<AlertDTO> createAlert(@RequestBody Map<String, Object> request) {
         try {
             Long assetId = Long.parseLong(request.get("assetId").toString());
             BigDecimal targetPrice = new BigDecimal(request.get("targetPrice").toString());
             AlertDirection aboveOrBelow = AlertDirection.valueOf(request.get("aboveOrBelow").toString().toUpperCase());
 
             Alert alert = alertService.createAlert(assetId, targetPrice, aboveOrBelow);
-            return new ResponseEntity<>(alert, HttpStatus.CREATED);
+            return new ResponseEntity<>(AlertDTO.fromEntity(alert), HttpStatus.CREATED);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
         } catch (Exception e) {
@@ -55,9 +56,12 @@ public class AlertController {
      * GET /api/alerts
      */
     @GetMapping
-    public ResponseEntity<List<Alert>> getAllAlerts() {
+    public ResponseEntity<List<AlertDTO>> getAllAlerts() {
         List<Alert> alerts = alertService.getAllAlerts();
-        return ResponseEntity.ok(alerts);
+        List<AlertDTO> alertDTOs = alerts.stream()
+                .map(AlertDTO::fromEntity)
+                .toList();
+        return ResponseEntity.ok(alertDTOs);
     }
 
     /**
@@ -65,9 +69,9 @@ public class AlertController {
      * GET /api/alerts/{id}
      */
     @GetMapping("/{id}")
-    public ResponseEntity<Alert> getAlertById(@PathVariable Long id) {
+    public ResponseEntity<AlertDTO> getAlertById(@PathVariable Long id) {
         return alertService.getAlertById(id)
-                .map(ResponseEntity::ok)
+                .map(alert -> ResponseEntity.ok(AlertDTO.fromEntity(alert)))
                 .orElse(ResponseEntity.notFound().build());
     }
 
@@ -76,9 +80,12 @@ public class AlertController {
      * GET /api/alerts/asset/{assetId}
      */
     @GetMapping("/asset/{assetId}")
-    public ResponseEntity<List<Alert>> getAlertsByAssetId(@PathVariable Long assetId) {
+    public ResponseEntity<List<AlertDTO>> getAlertsByAssetId(@PathVariable Long assetId) {
         List<Alert> alerts = alertService.getAlertsByAssetId(assetId);
-        return ResponseEntity.ok(alerts);
+        List<AlertDTO> alertDTOs = alerts.stream()
+                .map(AlertDTO::fromEntity)
+                .toList();
+        return ResponseEntity.ok(alertDTOs);
     }
 
     /**
@@ -86,9 +93,12 @@ public class AlertController {
      * GET /api/alerts/active
      */
     @GetMapping("/active")
-    public ResponseEntity<List<Alert>> getActiveAlerts() {
+    public ResponseEntity<List<AlertDTO>> getActiveAlerts() {
         List<Alert> alerts = alertService.getActiveAlerts();
-        return ResponseEntity.ok(alerts);
+        List<AlertDTO> alertDTOs = alerts.stream()
+                .map(AlertDTO::fromEntity)
+                .toList();
+        return ResponseEntity.ok(alertDTOs);
     }
 
     /**
@@ -96,9 +106,12 @@ public class AlertController {
      * GET /api/alerts/triggered
      */
     @GetMapping("/triggered")
-    public ResponseEntity<List<Alert>> getTriggeredAlerts() {
+    public ResponseEntity<List<AlertDTO>> getTriggeredAlerts() {
         List<Alert> alerts = alertService.getTriggeredAlerts();
-        return ResponseEntity.ok(alerts);
+        List<AlertDTO> alertDTOs = alerts.stream()
+                .map(AlertDTO::fromEntity)
+                .toList();
+        return ResponseEntity.ok(alertDTOs);
     }
 
     /**
@@ -106,9 +119,12 @@ public class AlertController {
      * GET /api/alerts/asset/{assetId}/active
      */
     @GetMapping("/asset/{assetId}/active")
-    public ResponseEntity<List<Alert>> getActiveAlertsByAssetId(@PathVariable Long assetId) {
+    public ResponseEntity<List<AlertDTO>> getActiveAlertsByAssetId(@PathVariable Long assetId) {
         List<Alert> alerts = alertService.getActiveAlertsByAssetId(assetId);
-        return ResponseEntity.ok(alerts);
+        List<AlertDTO> alertDTOs = alerts.stream()
+                .map(AlertDTO::fromEntity)
+                .toList();
+        return ResponseEntity.ok(alertDTOs);
     }
 
     /**
@@ -121,7 +137,7 @@ public class AlertController {
      * }
      */
     @PutMapping("/{id}")
-    public ResponseEntity<Alert> updateAlert(
+    public ResponseEntity<AlertDTO> updateAlert(
             @PathVariable Long id,
             @RequestBody Map<String, Object> request) {
         try {
@@ -138,7 +154,7 @@ public class AlertController {
                     : null;
 
             Alert updated = alertService.updateAlert(id, targetPrice, aboveOrBelow, triggered);
-            return ResponseEntity.ok(updated);
+            return ResponseEntity.ok(AlertDTO.fromEntity(updated));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
         } catch (Exception e) {
@@ -151,10 +167,10 @@ public class AlertController {
      * PATCH /api/alerts/{id}/reset
      */
     @PatchMapping("/{id}/reset")
-    public ResponseEntity<Alert> resetAlert(@PathVariable Long id) {
+    public ResponseEntity<AlertDTO> resetAlert(@PathVariable Long id) {
         try {
             Alert reset = alertService.resetAlert(id);
-            return ResponseEntity.ok(reset);
+            return ResponseEntity.ok(AlertDTO.fromEntity(reset));
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
         }
