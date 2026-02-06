@@ -193,23 +193,7 @@ COMMENT='Transaction history for all asset buy/sell/dividend activities';
 -- DIVIDENDS TABLE
 -- =====================================================================
 
-CREATE TABLE dividends (
-    id BIGINT NOT NULL AUTO_INCREMENT,
-    asset_id BIGINT NOT NULL,
-    payment_date DATE NOT NULL,
-    amount_per_share DECIMAL(15,8) NOT NULL,
-    shares_held DECIMAL(15,8) DEFAULT NULL,
-    total_amount DECIMAL(15,4) DEFAULT NULL,
-    currency VARCHAR(10) DEFAULT 'USD',
-    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_dividend_asset_payment (asset_id, payment_date),
-    KEY idx_asset (asset_id),
-    KEY idx_payment_date (payment_date),
-    CONSTRAINT fk_dividends_asset FOREIGN KEY (asset_id) 
-        REFERENCES assets (id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
-COMMENT='Dividend payment history for income-generating assets';
+C
 
 -- =====================================================================
 -- PRICE HISTORY TABLE
